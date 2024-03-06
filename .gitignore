@@ -1,0 +1,31 @@
+# List of untracked files to ignore
+.github/workflows/*
+.github/
+
+# Tokens
+setup/tokens/*
+
+# Autosaved malab files
+*.asv
+
+# Results folder
+Results/
+
+# Background command logs
+nohup.out
+*nohup.out
+nohup*.out
+
+# Slurm logs and any other log files
+scripts/*.out
+scripts/*.err
+*.log
+
+# Whatever this is
+.nfs*
+
+# LIC Toolbox
+Functions/Tools_LIC/
+
+# cmdofile
+scripts/cmdofile.txt

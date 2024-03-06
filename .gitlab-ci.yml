@@ -1,0 +1,15 @@
+.matlab_defaults:
+  image:
+    name: 09nwalkerm/matlab:v2  # Replace the value with the name of the MATLAB container image you want to use
+    entrypoint: [""]
+  variables:
+    MLM_LICENSE_FILE: 27000@matlabflx.cf.ac.uk
+
+stages:         
+  - matlab-test
+
+matlab-test:       
+  stage: matlab-test
+  extends: .matlab_defaults
+  script:
+    - matlab -batch "addpath(genpath('tests')); addpath(genpath('models')); addpath(genpath('functions')); addpath(genpath('external')); run_tests"
