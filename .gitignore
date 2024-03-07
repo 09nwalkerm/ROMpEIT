@@ -9,7 +9,7 @@ setup/tokens/*
 *.asv
 
 # Results folder
-Results/
+results/
 
 # Background command logs
 nohup.out
@@ -23,9 +23,6 @@ scripts/*.err
 
 # Whatever this is
 .nfs*
-
-# LIC Toolbox
-Functions/Tools_LIC/
 
 # cmdofile
 scripts/cmdofile.txt
