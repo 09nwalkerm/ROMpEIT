@@ -104,7 +104,18 @@ classdef InverseROMClass < InverseClass
             zNh = zNh(end-(obj.eL-1):end);
             
         end
-        
+       
+	function [zNh,zN] = RBapprox(obj,num,mu_a)
+	    
+	    zN = obj.RBsolution(num,mu_a);
+
+	    if isempty(obj.snap)
+		obj.snap = size(obj.LF{num}.V,2);
+	    end
+
+	    zNh = obj.LF{num}.V(:,1:obj.snap)*zN;
+	end
+
         function zNh = combinedRBsolution(obj,mu_a,el_in,el_out)
 
             if isempty(obj.use_sinks) && ~isempty(obj.new_sinks) && obj.new_sinks
@@ -113,9 +124,11 @@ classdef InverseROMClass < InverseClass
                     z_tmp = obj.RBsolution(jj,mu_a);
                     zNh = zNh - z_tmp/length(el_out);
                 end
+		zNh = zNh(end-(obj.eL-1):end);
                 zNh([el_in el_out]) = [];
             else
                 zNh = obj.RBsolution(obj.injection,mu_a);
+		zNh = zNh(end-(obj.eL-1):end);
                 zNh([el_in el_out]) = [];
             end
             

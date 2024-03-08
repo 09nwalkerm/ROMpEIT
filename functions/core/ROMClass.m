@@ -30,7 +30,7 @@ classdef ROMClass < OrderedModelClass
         electrode
         injection
         sink_elec
-        current
+        current % injection current
         L1
         U1
         tol
@@ -50,20 +50,17 @@ classdef ROMClass < OrderedModelClass
         %   function for debugging purposes or if using a pre-calculated 
         %   stability factor interpolant. 
         %
-        % Arguments:
-        %   - electrode  - (essential) The number of the desired injection 
-        %                  electrode
-        %   - current    - The injection current in Amps.
-        %   - FOM        - The full order model.
-        %   - tolGREEDY  - The minumum error tolerance the greedy algorithm
-        %                  will stop at.
-        %   - Nmax       - The maximum number of snapshots. If specified
-        %                  with tolGREEDY, the algorithm will stop at which 
-        %                  ever value is reached first.
-        %   - top        - Path to top of ROMEG tree
-        %   - verbose    - true or false: if true returns additional values in
-        %                  RBModel and prints debugging information.
-        %
+        % Args:
+        %   electrode: (essential) The number of the desired injection
+        %       electrode
+        %   current: The injection current in Amps.
+        %   FOM: The full order model.
+        %   tolGREEDY: The minumum error tolerance the greedy algorithm
+        %       will stop at.
+        %   Nmax: The maximum number of snapshots. If specified
+        %       with tolGREEDY, the algorithm will stop at which 
+        %       ever value is reached first.
+        %   top: Path to top of ROMEG tree
         %
 
             [obj,obj.FOM] = obj.popFields(varargin);

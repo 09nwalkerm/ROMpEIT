@@ -5,6 +5,7 @@ classdef BoundClass < InverseROMClass
        actual_error
        error_bound_avg
        actual_error_avg
+       actual_error_max
        bound_plot_mean
        bound_plot_max
        error_plot_mean
@@ -32,16 +33,13 @@ classdef BoundClass < InverseROMClass
        
         function obj = makeBound(obj)
 
-            obj = obj.loadMeasurements();
+            obj = obj.loadMeasurements(obj.injection);
            
             obj = obj.loadSinks();
            
             obj = obj.setUp();
             
-            obj = obj.loadFullLF();
-            
-            %RC = ROMClass('top',obj.top,'use_sinks',true,'electrode',obj.injection);
-            %FOM = RC.FOM;
+            obj = obj.loadFullLF(); 
             
             obj.error_bound_Mean = real(obj.LF{obj.injection}.delta_Mean);
             obj.error_bound_Max = obj.LF{obj.injection}.delta_Max;
@@ -63,37 +61,11 @@ classdef BoundClass < InverseROMClass
         
         function f = RBerror(obj,cond_te)
             
-            el_in = obj.el_in;
+	    mu_a = onj.makeMu(cond_te);
 
-            N_layers=length([obj.te obj.lf]); % Number of layers to estimate
-            lis=1:N_layers;lis(obj.lf)=[];
-            
-            mu_a = zeros(1,N_layers);
-            for ii=1:length(obj.lf)
-                mu_a(obj.lf(ii)) = obj.cond_lf(ii);
-            end
-            
-            for ii=1:length(lis)
-                mu_a(lis(ii)) = cond_te(ii);
-            end
-            
-            n_mu=length(mu_a); % number of parameters
-            M_mu=obj.LF{obj.injection}.ANq{n_mu}(1:obj.snap,1:obj.snap)/mu_a(n_mu); % Z
-            
-            for kk=1:n_mu-1
-                M_mu=M_mu+mu_a(kk)*obj.LF{obj.injection}.ANq{kk}(1:obj.snap,1:obj.snap); % Stiffness
-            end
-            
-            zN=M_mu\obj.LF{obj.injection}.FNq{1}(1:obj.snap);
-            zNh = obj.LF{obj.injection}.V(:,1:obj.snap)*zN;
-            %zNh1 = zNh(end-(obj.eL-1):end);
-            
-            % Compute error between measurement and simulation
-            di=zNh-obj.u;%(end-(obj.eL-1):end);
-            %zNh(end - obj.LF{obj.injection}.L + [obj.sinks(obj.injection,2:end) obj.el_in]) = [];
-            f=norm(di)/norm(zNh);%sum(di.^2);
-            %f = zNh1;
+	    [zNh,zN] = obj.RBapprox(obj.injection,mu_a);
 
+	    f=norm(obj.u{obj.injection}-zNh)/norm(zN);
         end
         
         
@@ -135,11 +107,12 @@ classdef BoundClass < InverseROMClass
             % organise
             %obj.error_bound_avg = mean(obj.error_bound,3,'omitnan');
             obj.actual_error_avg = mean(obj.actual_error,3,'omitnan');
-            
+            obj.actual_error_max = mean(obj.actual_error,1,'omitnan');
+
             obj.bound_plot_mean = mean(obj.error_bound_Mean,1,'omitnan');
             obj.bound_plot_max = mean(obj.error_bound_Max,1,'omitnan');
             obj.error_plot_mean = mean(obj.actual_error_avg,1,'omitnan');
-            obj.error_plot_max = max(obj.actual_error_avg,[],1);
+            obj.error_plot_max = max(obj.actual_error_max,[],3);
         end
         
         function obj = saveBound(obj)
