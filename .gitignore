@@ -26,3 +26,6 @@ scripts/*.err
 
 # cmdofile
 scripts/cmdofile.txt
+
+# sphinx build
+docs/_build/
