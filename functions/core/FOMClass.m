@@ -38,17 +38,17 @@ classdef FOMClass < OrderedModelClass
         %   generate this class object although feel free to use this for
         %   debugging purposes. See below for arguments.
         %
-        % Arguments:
-        %   - model    - path to head model you want to use. Must contain p,t,f.
-        %   - mu_min   - array of minimum conductivities in order of head tissue.
-        %   - mu_max   - array of maximum conductivities in order of head tissue.
-        %   - nic      - number of beta interpolation points.
-        %   - anis_tan - array of tissue numbers to tag with tangential
+        % Args:
+        %   model: path to head model you want to use. Must contain p,t,f.
+        %   mu_min: array of minimum conductivities in order of head tissue.
+        %   mu_max: array of maximum conductivities in order of head tissue.
+        %   nic: number of beta interpolation points.
+        %   anis_tan: array of tissue numbers to tag with tangential
         %                conductivity.
-        %   - anis_rad - array of tissue numbers to tag with radial
+        %   anis_rad: array of tissue numbers to tag with radial
         %                conductivity.
-        %   - current  - injection current used.
-        %   - elec_pat - (beta) .mat file with electrode injection patterns.
+        %   current: injection current used.
+        %
             
             if isa(varargin{1},'cell')
                 varargin = varargin{1};
