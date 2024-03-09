@@ -7,7 +7,16 @@ warning('off','all')
 M_mu_mu = FOM.muAssemble(FOM.mu_train(n_coef,:));
 
 opt.UPDATEP = 'no';opt.INNERIT=8;opt.MAXITERATION=100;opt.UPDATEM='no';opt.DISP=0;
-[betaa,~,res]= bleigifp(0.5*(M_mu_mu+M_mu_mu'),FOM.Xnorm,2,opt);
+try
+    [betaa,~,res]= bleigifp(0.5*(M_mu_mu+M_mu_mu'),FOM.Xnorm,2,opt);
+catch ME
+    if (strcmp(ME.identifier,'MATLAB:UndefinedFunction'))
+        warning('Could not find BLEIGIFP function (download recommended) so using eigs instead.')
+        betaa = eigs(M_mu_mu,2,'smallestabs');
+    else
+        rethrow(ME)
+    end
+end
 
 betaa=real(betaa(2));res=res(2);
 
