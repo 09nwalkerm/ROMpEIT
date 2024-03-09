@@ -13,11 +13,12 @@ catch ME
     if (strcmp(ME.identifier,'MATLAB:UndefinedFunction'))
         warning('Could not find BLEIGIFP function (download recommended) so using eigs instead.')
         betaa = eigs(M_mu_mu,2,'smallestabs');
+        res=0;
     else
         rethrow(ME)
     end
 end
 
-betaa=real(betaa(2));res=res(2);
+betaa=real(betaa(2));%res=res(2);
 
 warning('on','all')

@@ -27,7 +27,7 @@ git clone https://github.com/09nwalkerm/ROMpEIT.git
 
 #### BLEIGIFP installation
 
-It is hihgly recommended that you install the BLEIGIFP matlab code for solving generalised eigenvalue problems.
+It is highly recommended that you install the BLEIGIFP matlab code for solving generalised eigenvalue problems.
 The code can be downloaded [here](https://www.ms.uky.edu/~qye/bleigifp.html).
 Make sure to add this function to your MATLAB path.
 
