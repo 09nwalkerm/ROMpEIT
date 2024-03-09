@@ -1,4 +1,5 @@
 [![Documentation Status](https://readthedocs.org/projects/rompeit/badge/?version=latest)](https://rompeit.readthedocs.io/en/latest/?badge=latest)
+[![pipeline status](https://git.cardiff.ac.uk/c1616132/rompeit/badges/main/pipeline.svg)](https://git.cardiff.ac.uk/c1616132/rompeit)
 
 # ROMpEIT
 
