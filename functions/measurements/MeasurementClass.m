@@ -23,10 +23,6 @@ classdef MeasurementClass < OrderedModelClass
         function obj = MeasurementClass(varargin)
 
             obj = obj.processArgs(varargin);
-
-            obj = obj.processModel();
-
-            obj.SL = length(unique(obj.f(:,end)))-1;
         end
 
         function obj = genData(obj,injection)

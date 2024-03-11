@@ -8,10 +8,12 @@ M_mu_mu = FOM.muAssemble(FOM.mu_train(n_coef,:));
 
 opt.UPDATEP = 'no';opt.INNERIT=8;opt.MAXITERATION=100;opt.UPDATEM='no';opt.DISP=0;
 try
+    FOM.logger.debug('femeg_ROM_RBF_offline_dual_iter','Using bleigifp function to calculate beta')
     [betaa,~,res]= bleigifp(0.5*(M_mu_mu+M_mu_mu'),FOM.Xnorm,2,opt);
 catch ME
     if (strcmp(ME.identifier,'MATLAB:UndefinedFunction'))
-        warning('Could not find BLEIGIFP function (download recommended) so using eigs instead.')
+        FOM.logger.warning('femeg_ROM_RBF_offline_dual_iter',...
+            'Could not find BLEIGIFP function (download recommended) so using eigs instead.')
         betaa = eigs(M_mu_mu,2,'smallestabs');
         res=0;
     else
@@ -20,5 +22,5 @@ catch ME
 end
 
 betaa=real(betaa(2));%res=res(2);
-
+FOM.logger.info('femeg_ROM_RBF_offline_dual_iter',['Beta value is ' num2str(betaa)])
 warning('on','all')

@@ -22,7 +22,6 @@ classdef FOMClass < OrderedModelClass
         RRBF
         CBM
         paramsROM
-        verbose
         complim
     end
     methods
@@ -61,13 +60,14 @@ classdef FOMClass < OrderedModelClass
 %             end
 
             obj = obj.processArgs(varargin);
-
-            obj = obj.processModel();
+            obj = obj.getTOP();
 
         end
 
         function obj = buildFOM(obj)
         % FOM(p,t,f,mu_min,value,mu_max,value,anis_tan,value,anis_rad,value,nic,value)
+            obj = obj.processModel();
+        
             if ~isempty(obj.anis_rad)
                 if isempty(obj.theta) || ~obj.angles
                     obj = obj.computeAngles(obj.t);
@@ -272,25 +272,21 @@ classdef FOMClass < OrderedModelClass
             obj.mu_train=bsxfun(@plus,obj.mu_min(obj.active),bsxfun(@times,mu_cube,(obj.mu_max(obj.active)-obj.mu_min(obj.active))));
         end
 
-        function obj = readBeta(obj,top,n)
+        function obj = readBeta(obj)
             betaa_tot=zeros(obj.nic,1);
-            for kk=1:n
-                load([top '/Results/ROM/other/betaa_' num2str(kk)], 'betaa')
+            for kk=1:obj.nic
+                load([obj.top '/Results/ROM/other/betaa_' num2str(kk)], 'betaa')
                 betaa_tot(kk)=betaa;
             end
             obj.betaa=betaa_tot;
         end
 
-        function saveFOM(obj,top)
-%             if obj.verbose
-%                 FOM = obj;
-%                 save([top '/Results/verbose/FOM.mat'], 'FOM')
-%                 fprintf("\n \n To see FOM.mat, please check the Results/verbose folder in the ROMEG tree. \n \n")
-%             else
-                FOM = obj;
-                save([top '/Results/ROM/FOM.mat'], 'FOM')
-                fprintf("\n \n To see FOM.mat, please check the Results folder in the ROMEG tree. \n \n")
-%             end
+        function saveFOM(obj)
+
+            FOM = obj;
+            save([obj.top '/Results/ROM/FOM.mat'], 'FOM')
+            fprintf("\n \n To see FOM.mat, please check the Results folder in the ROMEG tree. \n \n")
+
         end
 
         function obj = loadpreFOM(top)
@@ -305,7 +301,7 @@ classdef FOMClass < OrderedModelClass
     end
 
     methods (Static)
-        function obj = loadFOM(top,verbose)
+        function obj = loadFOM(top)
         % 
         % loadFOM(top)
         % 
@@ -316,30 +312,10 @@ classdef FOMClass < OrderedModelClass
         % Arguments:
         %   - top - path to top of ROMEG tree
 
-%             if verbose
-%                 load([top '/Results/verbose/FOM.mat'], 'FOM')
-%                 obj = FOM;
-%                 disp("Loaded pre-made FOM Class object from Results/verbose.")
-%             else
-                load([top '/Results/ROM/FOM.mat'], 'FOM')
-                obj = FOM;
-                disp("Loaded pre-made FOM Class object from Results/.")
-%             end
-        end
-        
-        function verboseBeta(top,FOM)
-            fprintf('Starting beta calculation...\n\n')
-            %FOM.mu_train=FOM.mu_train(1:2,:);
-            betaa=femeg_ROM_RBF_offline_dual_iter(FOM,1);
-            save([top '/Results/verbose/betaa_1'],'betaa')
-            fprintf('Saved single beta value. \n')
-            fprintf('Loading pre calculated beta and mu vales...\n\n')
-            load([top '/Results/verbose/beta_vals.mat'],'betaa','mu_train')
-            FOM.betaa = betaa;
-            FOM.mu_train = mu_train;
-            fprintf('Calculating RRBF coefficients...\n\n')
-            FOM=femeg_ROM_RRBF(FOM);
-            FOM.saveFOM(top);
+
+            load([top '/Results/ROM/FOM.mat'],'FOM')
+            obj = FOM;
+            disp("Loaded pre-made FOM Class object from Results/.")
         end
 
     end

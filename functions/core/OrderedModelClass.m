@@ -6,13 +6,14 @@ classdef OrderedModelClass
         Ind_E           % Tetrahedron number related to electrode
         anis_rad
         anis_tan
-        angles          % true if model contains theta values (default: false)
+        angles = false  % true if model contains theta values (default: false)
         model           % path to model
         theta
         elec_height
         top             % path to top of the ROMEG tree
         sinks           % injection and sink patterns for each electrode
         sinks_path      % path to the sink.mat file
+        use_sinks = true % do you want to use the sinks file for ROM/inverse, defualt = true
         num_sinks       % number of current sinks in the injection pattern
         num_patterns    % number of injection patterns
         electrodes      % list of injection electrodes for sink patterns
@@ -23,6 +24,8 @@ classdef OrderedModelClass
         logLevel = 3    % level of logging for the log files, defualt is info
         cmdLevel = 3    % level of output for cmd logging, default is info
         num_dipoles
+        debug           % (boolean) turn debug mode on for logs with 'true'
+        Cluster         % is ROM being run on the cluster
     end
     
     properties (Access = protected)
@@ -31,8 +34,36 @@ classdef OrderedModelClass
 
     methods
         function obj = OrderedModelClass()
-            obj.logger = log4m.getLogger();
-            obj.logger.trace('OrderedModelClass','Loading logger into Class as obj.logger')
+            
+        end
+        
+        function obj = getTOP(obj)
+            if isempty(obj.top)
+                top = getenv("ROMEG_TOP");
+                if isempty(top)
+                    error('ROMEG_TOP environment variable not set')
+                else
+                    obj.top = top;
+                end
+            end
+        end
+        
+        function obj = startLogger(obj,tag)
+            % clear previous logger
+            obj.logger = [];
+            
+            % get env vars and make path
+            logs = getenv("ROMEG_LOGS");
+            id = getenv("SLURM_JOB_ID");
+            logpath=[logs '/' tag '_' id '.log'];
+            
+            % fetch logger object and load into class
+            obj.logger = log4m.getLogger(logpath);
+            obj.logger.trace('OrderedModelClass.startLogger','Loading logger into Class as obj.logger')
+            if ~isempty(obj.debug) && obj.debug
+                obj.logger.setLogLevel(obj.logger.DEBUG);
+                obj.logger.info('OrderedModelClass.startLogger','Turning on debug mode')
+            end
         end
         
         function [M_mu,b_mu] = muAssemble(obj,mu)
@@ -180,53 +211,51 @@ classdef OrderedModelClass
                     mkdir([data '/logs'])
                 end
                 % create file system for results
-                if ~strcmp(tree,data) || ~strcmp(tree,[data '/']) || ~strcmp([tree '/'],data)
-                    if strcmp(params.type,'ROM')
-                        if ~isfolder([data '/ROM'])
-                            disp('Making ROM folder.')
-                            mkdir([data '/ROM'])
-                            OrderedModelClass.changePath('ROM');
-                            obj.top = [data '/ROM'];
-                            OrderedModelClass.setupFiles('ROM',true);
+                if strcmp(params.type,'ROM')
+                    if ~isfolder([data '/ROM'])
+                        disp('Making ROM folder.')
+                        mkdir([data '/ROM'])
+                        OrderedModelClass.changePath('ROM');
+                        %obj.top = [data '/ROM'];
+                        OrderedModelClass.setupFiles('ROM',true);
+                    else
+                        %disp('Warning: ROM folder in data path already exists, overwriting.')
+                        OrderedModelClass.changePath('ROM')
+                        %obj.top = [data '/ROM'];
+                    end
+                elseif strcmp(params.type,'measurement') || strcmp(params.type,'inverse') || strcmp(params.type,'bound')
+                    if ~isfolder([data '/Result' num2str(params.num)])
+                        disp(['Making Result' num2str(params.num) ' folder.'])
+                        mkdir([data '/Result' num2str(params.num)])
+                        OrderedModelClass.changePath(['Result' num2str(params.num)])
+                        %obj.top = [data '/Result' num2str(params.num)];
+                        if isfield(params,'RB_path')
+                            OrderedModelClass.setupFiles('ROM',false,'RB_path',params.RB_path)
                         else
-                            %disp('Warning: ROM folder in data path already exists, overwriting.')
-                            OrderedModelClass.changePath('ROM')
-                            obj.top = [data '/ROM'];
+                            OrderedModelClass.setupFiles('ROM',false)
                         end
-                    elseif strcmp(params.type,'measurement') || strcmp(params.type,'inverse') || strcmp(params.type,'bound')
-                        if ~isfolder([data '/Result' num2str(params.num)])
-                            disp(['Making Result' num2str(params.num) ' folder.'])
-                            mkdir([data '/Result' num2str(params.num)])
-                            OrderedModelClass.changePath(['Result' num2str(params.num)])
-                            obj.top = [data '/Result' num2str(params.num)];
-                            if isfield(params,'RB_path')
-                                OrderedModelClass.setupFiles('ROM',false,'RB_path',params.RB_path)
-                            else
-                                OrderedModelClass.setupFiles('ROM',false)
-                            end
-                        else
-                            disp(['Warning: Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
-                            OrderedModelClass.changePath(['Result' num2str(params.num)])
-                            obj.top = [data '/Result' num2str(params.num)];
+                    else
+                        disp(['Warning: Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
+                        OrderedModelClass.changePath(['Result' num2str(params.num)])
+                        %obj.top = [data '/Result' num2str(params.num)];
 
-                        end
-                    elseif strcmp(params.type,'eeg')
-                        if ~isfolder([data '/Result' num2str(params.num)])
-                            disp(['Making Result' num2str(params.num) ' folder.'])
-                            mkdir([data '/Result' num2str(params.num)])
-                            OrderedModelClass.changePath(['Result' num2str(params.num)])
-                            obj.top = [data '/Result' num2str(params.num)];
-                            OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
-                        else
-                            disp(['Warning: Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
-                            OrderedModelClass.changePath(['Result' num2str(params.num)])
-                            obj.top = [data '/Result' num2str(params.num)];
-                        end
+                    end
+                elseif strcmp(params.type,'eeg')
+                    if ~isfolder([data '/Result' num2str(params.num)])
+                        disp(['Making Result' num2str(params.num) ' folder.'])
+                        mkdir([data '/Result' num2str(params.num)])
+                        OrderedModelClass.changePath(['Result' num2str(params.num)])
+                        %obj.top = [data '/Result' num2str(params.num)];
+                        OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
+                    else
+                        disp(['Warning: Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
+                        OrderedModelClass.changePath(['Result' num2str(params.num)])
+                        %obj.top = [data '/Result' num2str(params.num)];
                     end
                 else
-                    setenv("ROMEG_TOP",data)
-                    obj.top = data;
+                    OrderedModelClass.changePath('ROM');
                 end
+                obj.top = getenv("ROMEG_TOP");
             end
         end
 
@@ -355,73 +384,21 @@ classdef OrderedModelClass
                 JOB=varargin{1};
             else
                 [~,cmdout] = system(['squeue -u $USER | grep -m 1 ' NAME ' | awk ''{split($1,a,"_"); print a[1]; exit}'' ']);
-                
-                %[~,cmdout] = system(['squeue -u $USER | tail -n +3 | awk ''{split($1,a,"_"); print a[1]; exit}'' ']);
                 cmdout2 = cmdout(1:end-1);
                 JOB = cmdout2;
             end
-
-%             while 1
-%                 [~,cmdout] = system(['squeue -u $USER | grep ' NAME ' | awk ''{split($1,a,"_"); print a[1]; exit}'' ']);
-%                 if isempty(cmdout)
-%                     cmdout = cmdout(1:end-1);
-%                     [~,cmdout2] = system(['scontrol show job ' cmdout ' | grep -B 3 ''JobState=FAILED'' | grep -w JobId | awk ''{split($1,a,"="); print a[2]; exit}'' ']);
-%                     if isempty(cmdout2)
-%                         break
-%                     else
-%                         while 1
-%                             [~,cmdout3] = system(['scontrol show job ' cmdout ' | grep -B 3 ''JobState=FAILED'' | grep -w ArrayTaskId | awk ''{split($3,a,"="); print a[2]; exit}'' ']);
-%                             if isempty(cmdout3)
-%                                 break
-%                             else
-%                                 cmdout3 = cmdout3(1:end-1);
-%                                 [CODE,~] = system(['scontrol requeue ' cmdout '_' cmdout3]);
-%                                 if (CODE == 0); disp(['Requeued Job ' cmdout '_' cmdout3]); end
-%                             end
-%                         end
-%                     end
-%                 end
-%                 pause(PAUSE)
-%             end
             fprintf('\nWaiting for slurm job to finish')
             while 1
                 fprintf('.')
                 [~,cmdout] = system(['squeue --job ' JOB ' | grep -m 1 ' NAME ]);
-                %[~,cmdout] = system(['squeue --job ' JOB ' | tail -n +2']);
-                path = getenv("ROMEG");
-                cmdofile = fopen([path '/scripts/cmdofile.txt'],'a+');
-                fprintf(cmdofile,cmdout);
-%                 [~,cmdout_tmp] = system(['which tail']);
-%                 fprintf(cmdofile,cmdout_tmp);
-%                 [~,cmdout_tmp] = system(['echo $PATH']);
-%                 fprintf(cmdofile,cmdout_tmp);
-                fprintf(cmdofile,cmdout2);
-                fclose(cmdofile);
                 if isempty(cmdout)
                     [~,cmdout2] = system(['scontrol show job ' JOB ' |grep -B 3 ''JobState=FAILED'' ']);
                     if isempty(cmdout2)
                         break
-                    else
-%                         while 1
-%                             [~,cmdout3] = system(['scontrol show job ' JOB ' |grep -B 3 ''JobState=FAILED'' |grep -w ArrayTaskId |awk ''{split($3,a,"="); print a[2]; exit}'' ']);
-%                             if isempty(cmdout3)
-%                                 break
-%                             else
-%                                 cmdout3 = cmdout3(1:end-1);
-%                                 [CODE,~] = system(['scontrol requeue ' JOB '_' cmdout3]);
-%                                 if (CODE == 0); disp(['Requeued Job ' JOB '_' cmdout3]); end
-%                             end
-%                         end
                     end
                 elseif strcmp(cmdout(1:end-1),'slurm_load_jobs error: Invalid job id specified')
                     disp(cmdout)
                     break
-%                     [~,cmdout3] = system(['scontrol show job ' JOB ' |grep -B 3 ''JobState=FAILED'' |grep -w ArrayTaskId |awk ''{split($3,a,"="); print a[2]; exit}'' ']);
-%                     if ~isempty(cmdout3)
-%                         cmdout3 = cmdout3(1:end-1);
-%                         [CODE,~] = system(['scontrol requeue ' JOB '_' cmdout3]);
-%                         if (CODE == 0); disp(['Requeued Job ' JOB '_' cmdout3]); end
-%                     end
                 end
                 pause(PAUSE)
             end
@@ -448,7 +425,7 @@ classdef OrderedModelClass
                 pause(PAUSE)
             end
             fprintf('\n\n')
-            %delete([path '/scripts/cmdofile.txt'])
+
         end
 
         function setupFiles(varargin)
@@ -502,8 +479,10 @@ classdef OrderedModelClass
         end
 
         function changePath(folder)
-            %[~,path] = system(['readlink -f $ROMEG_DATA/' folder]);
             data = getenv("ROMEG_DATA");
+            if isempty(data)
+                error('Must set ROMEG_DATA. Please source set_env.sh.')
+            end
             if strcmp(data(end),'/'), data = data(1:end-1); setenv("ROMEG_DATA",data); end
             path = [data '/' folder];
             if isfolder(path)
@@ -590,160 +569,6 @@ classdef OrderedModelClass
             end
         end
         
-        function backupROM(varargin)
-        %
-        %   OrderedModelClass.backupROM(name1,value1,name2,value2,...)
-        %
-        % Arguments:
-        %   backup_folder  - name of the backup folder
-        %   
-        %
-            params = struct();
-            for i = 1:2:length(varargin) % work for a list of name-value pairs
-                if ischar(varargin{i}) % check if is character
-                    params.(varargin{i}) = varargin{i+1}; % override or add parameters to structure.
-                end
-            end
-            
-            data = getenv("ROMEG_DATA");
-            if strcmp(data(end),'/'), data = data(1:end-1); setenv("ROMEG_DATA",data); end
-            if ~isempty(params.backup_folder)
-                if isfolder([data '/../' params.backup_folder])
-                    copyfile([data '/ROM'],[data '/../' params.backup_folder '/ROM'])
-                else
-                    mkdir([data '/../' params.backup_folder])
-                    copyfile([data '/ROM'],[data '/../' params.backup_folder '/ROM'])
-                end
-            end           
-        end
-        
-        function resetInverse(varargin)
-        %
-        %   OrderedModelClass.resetInverse(name1,value1,name2,value2,...)
-        %
-        % Arguments:
-        %   backup_folder   - name of the backup folder
-        %   num_samples     - the number of samples to reset
-        %
-        %
-        %
-            params = struct();
-            for i = 1:2:length(varargin) % work for a list of name-value pairs
-                if ischar(varargin{i}) % check if is character
-                    params.(varargin{i}) = varargin{i+1}; % override or add parameters to structure.
-                end
-            end
-
-            data = getenv("ROMEG_DATA");
-            if strcmp(data(end),'/'), data = data(1:end-1); setenv("ROMEG_DATA",data); end
-            if ~isempty(params.backup_folder)
-                if isfolder([data '/../' params.backup_folder])
-                    for ii = 1:params.num_samples
-                        OrderedModelClass.changePath(['Result' num2str(ii)])
-                        top = getenv("ROMEG_TOP");
-                        copyfile([top '/Results/inverse/ROM/inverse_*'],[data '/../' params.backup_folder '/Result' num2str(ii) '/Results/inverse/ROM/'])
-                    end
-                else
-                    mkdir([data '/../' params.backup_folder])
-                    for ii = 1:params.num_samples
-                        OrderedModelClass.changePath(['Result' num2str(ii)])
-                        top = getenv("ROMEG_TOP");
-                        mkdir([data '/../' params.backup_folder '/Result' num2str(ii) '/Results/inverse/ROM/'])
-                        copyfile([top '/Results/inverse/ROM/inverse_*'],[data '/../' params.backup_folder '/Result' num2str(ii) '/Results/inverse/ROM'])
-                    end
-                end
-            end
-            
-            for ii = 1:params.num_samples
-                OrderedModelClass.changePath(['Result' num2str(ii)])
-                top = getenv("ROMEG_TOP");
-                rmdir([top '/Results/inverse/ROM/inverse_*'] ,'s')
-            end
-        end
-        
-        function adjustROM()
-            
-            
-            
-            %load model
-            OrderedModelClass.changePath('ROM')
-            top = getenv("ROMEG_TOP");
-            load([top '/Results/ROM/RBModel.mat'],'RBModel')
-            
-            %search and cut through V
-            for ii=1:size(RBModel.LF,2)
-                disp(['Cutting transformation matrix for pattern ' num2str(ii) ' of ' num2str(size(RBModel.LF,2))])
-                condition = 1; count =1;
-                while condition > 1e-10     % jj = 1:RBModel.LF{ii}.N
-                    
-                    m_mu = RBModel.LF{ii}.ANq{end}(1:count,1:count);
-                    
-                    for kk=1:RBModel.LF{ii}.P-1
-                        m_mu = m_mu + RBModel.LF{ii}.ANq{kk}(1:count,1:count);
-                    end
-                    
-                    condition = rcond(m_mu);
-                    
-                    if count == RBModel.LF{ii}.N
-                        break
-                    else
-                        if condition < 1e-10
-                            count = count - 1;
-                            break
-                        else
-                            count = count + 1;
-                        end
-                    end
-                end
-                
-                RBModel.LF{ii}.V = RBModel.LF{ii}.V(:,1:count);
-                RBModel.LF{ii}.FNq{1} = RBModel.LF{ii}.FNq{1}(1:count,:);
-                for kk=1:RBModel.LF{ii}.P
-                    RBModel.LF{ii}.ANq{kk} = RBModel.LF{ii}.ANq{kk}(1:count,1:count);
-                end
-                
-                RBModel.LF{ii}.N = count;
-                disp(['Transformation matrix, ANq matrices and FNq matrix cut at ' num2str(count) ' snapshots.'])
-            end
-            
-            %save ROM
-            save([top '/Results/ROM/RBModel.mat'],'RBModel')
-        end
-        
-        function cutMeasurements(varargin)
-        %
-        %   OrderedModelClass.cutMeasurements(name1,value1,name2,value2,...)
-        %
-        % Arguments:
-        %   num_samples     - the number of samples to cut
-        %   num_patterns    - the number of electrode patterns to cut
-        %
-        %
-        
-            params = struct();
-            for i = 1:2:length(varargin) % work for a list of name-value pairs
-                if ischar(varargin{i}) % check if is character
-                    params.(varargin{i}) = varargin{i+1}; % override or add parameters to structure.
-                end
-            end
-
-            data = getenv("ROMEG_DATA");
-            if strcmp(data(end),'/'), data = data(1:end-1); setenv("ROMEG_DATA",data); end
-
-            for ii = 1:params.num_samples
-                for jj = 1:params.num_patterns
-                    OrderedModelClass.changePath(['Result' num2str(ii)])
-                    top = getenv("ROMEG_TOP");
-                    load([top '/Results/measurements/pattern_' num2str(jj) '.mat'],'Data')
-                    Data.p = [];
-                    Data.t = [];
-                    Data.f = [];
-                    save([top '/Results/measurements/pattern_' num2str(jj) '.mat'],'Data')
-                    clear Data
-                end
-                disp(['Done cleaning for sample ' num2str(ii)])
-            end
-        end
     end
 end
 

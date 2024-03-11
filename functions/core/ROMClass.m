@@ -19,8 +19,8 @@ classdef ROMClass < OrderedModelClass
         delta_Max
         delta_Mean
         delta
-        tolGREEDY
-        Nmax
+        tolGREEDY = 5e-5    % default value for tolGREEDY = 5e-5
+        Nmax = 30           % default value for Nmax=30
         Cqq
         dqq
         Eqq
@@ -30,13 +30,11 @@ classdef ROMClass < OrderedModelClass
         electrode
         injection
         sink_elec
-        current % injection current
+        current             % injection current
         L1
         U1
         tol
-        verbose
         split
-        use_sinks
     end
     methods
         function obj = ROMClass(varargin)
@@ -54,7 +52,6 @@ classdef ROMClass < OrderedModelClass
         %   electrode: (essential) The number of the desired injection
         %       electrode
         %   current: The injection current in Amps.
-        %   FOM: The full order model.
         %   tolGREEDY: The minumum error tolerance the greedy algorithm
         %       will stop at.
         %   Nmax: The maximum number of snapshots. If specified
@@ -62,9 +59,9 @@ classdef ROMClass < OrderedModelClass
         %       ever value is reached first.
         %   top: Path to top of ROMEG tree
         %
-
-            [obj,obj.FOM] = obj.popFields(varargin);
             
+            obj = obj.processArgs(varargin);
+            obj = obj.getTOP();
         end
 
         function obj = buildROM(obj)
@@ -84,40 +81,15 @@ classdef ROMClass < OrderedModelClass
         end
 
         function obj = calcXnorm(obj,FOM)
-            if obj.verbose
-                disp("The dimensions of ROM.V...")
-                disp(size(obj.V))
-                disp("The dimensions of FOM.Xnorm...")
-                disp(size(FOM.Xnorm))
-            end
             obj.Xnorm = obj.V'*(FOM.Xnorm*obj.V);
         end
 
-        function [obj,FOM] = popFields(obj,args)
+        function obj = popFields(obj)
             % Populate the ROMClass object fields from the arguments.
             
-            obj = obj.processArgs(args);
-            
-            if find(logical(strcmp('FOM',args)))
-                FOM = obj.FOM;
-                obj.FOM = [];
-            else
-                FOM = FOMClass.loadFOM(obj.top,obj.verbose);
-            end
+            FOM = FOMClass.loadFOM(obj.top,obj.verbose);
             
             obj = obj.processArgs(FOM.paramsROM);
-            
-            if isempty(obj.tolGREEDY)
-                obj.tolGREEDY = 5e-5; % 0.5% Relative error
-            end
-
-            if isempty(obj.Nmax)
-                if obj.verbose
-                    obj.Nmax = 10; % Suitable Nmax for debugging
-                else
-                    obj.Nmax = 30; % Nmax example
-                end
-            end
 
             if isempty(obj.current)
                 obj.current = 0.020e-3;
@@ -147,6 +119,8 @@ classdef ROMClass < OrderedModelClass
             
             %%% Bin p,t,f to save memory
             FOM.p=[]; FOM.t=[]; FOM.f=[];
+            
+            obj.FOM = FOM;
         end
 
         function [obj,FOM] = solvePrelim(obj,FOM)

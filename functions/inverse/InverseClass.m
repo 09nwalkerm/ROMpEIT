@@ -14,7 +14,6 @@ classdef InverseClass < OrderedModelClass
         el_in           % injection electrode
         injection       % inection electrode pattern number in sink file
         ROM             % is this being used for ROM inverse
-        Cluster         % is ROM being run on the cluster
         TRAD            % is the traditional inverse method being run as well?
         lb              % lower conductivity bound
         ub              % upper conductivity bound

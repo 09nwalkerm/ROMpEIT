@@ -4,7 +4,7 @@ function cluster_job_inv_TRAD()
     fprintf('\n ************************* COEFFICIENT NUMBER  %d \n', coef_n);
     top = getenv("ROMEG_TOP");
     load([top '/Results/inverse/TRAD/prep.mat'], 'inv')
-
+    setenv("ROMEG_LOGS",[top '/Results/logs'])
+    inv.startLogger(['invTRAD_' num2str(coef_n)])
     inv.runInverse(coef_n);
-
 end

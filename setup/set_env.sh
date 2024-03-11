@@ -38,6 +38,7 @@ fi
 
 if [ -d ${ROMEG_DATA}/logs ] || [ -d ${ROMEG_DATA}logs ]; then
 	echo "Using /logs folder for logging."
+	export ROMEG_LOGS=${ROMEG_DATA}/logs
 else
 	read -p "There is no logging folder in this directory, would you like to create one? (y/n): " ans
 	if [[ $ans = "y" ]] || [[ $ans = "Y" ]] || [[ $ans = "yes" ]]; then
@@ -47,6 +48,7 @@ else
 		else
 			mkdir ${ROMEG_DATA}/logs
 		fi
+		export ROMEG_LOGS=${ROMEG_DATA}/logs
 	fi
 fi
 

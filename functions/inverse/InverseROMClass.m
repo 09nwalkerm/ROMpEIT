@@ -14,17 +14,13 @@ classdef InverseROMClass < InverseClass
         function obj = InverseROMClass(varargin)
 
             obj = obj.processArgs(varargin);
+            obj = obj.getTop();
             obj = obj.loadSinks();
 
         end
 
         function obj = setUp(obj)
             
-%             if isempty(obj.use_sinks)
-%                 obj.el_in = obj.injection;
-%             else
-%                 obj.el_in = obj.sinks(obj.injection,1);
-%             end
             obj.el_in = obj.sinks(obj.injection,1);
             obj = obj.loadLF();
             

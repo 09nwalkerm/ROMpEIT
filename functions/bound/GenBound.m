@@ -11,16 +11,18 @@ function GenBound(varargin)
 %   the same folder.
 %
 % Arguments:
-%   num_samples     - number of conductivity samples to use
-%   sample_num      - array of sample numbers
-%   max_snap        - maximum number of snapshots in RBModel to use for
+%   num_samples: number of conductivity samples to use
+%   sample_num: array of sample numbers
+%   max_snap: maximum number of snapshots in RBModel to use for
 %                     calculations
-%   complim         - max number of processes to run in parallel on cluster
+%   complim: max number of processes to run in parallel on cluster
+%   debug: (boolean) turn debug mode on
 
 
     params = [];
     params_S = struct();
-    paramslist = [{'num_samples'} {'max_snap'},{'complim'},{'sample_num'}];
+    paramslist = [{'num_samples'},{'max_snap'},{'complim'},{'sample_num'},...
+        {'debug'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs
@@ -43,6 +45,7 @@ function GenBound(varargin)
         
         OMC = OrderedModelClass();
         OMC = OMC.checkPaths('type','bound','num',i);
+        OMC = OMC.startLogger('BOUND');
         OMC = OMC.loadSinks();
         setenv("num",num2str(OMC.num_patterns));
         setenv("MAX_SNAP",num2str(params_S.max_snap))

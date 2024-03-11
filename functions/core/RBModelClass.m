@@ -1,20 +1,19 @@
 classdef RBModelClass < OrderedModelClass
     properties
         LF
-        verbose
-        use_sinks
     end
     methods
         function obj = RBModelClass(varargin)
             
             obj = obj.processArgs(varargin);
+            obj = obj.getTOP();
         end
 
-        function obj = readLF(obj,top,n)
+        function obj = readLF(obj,n)
 
             for kk=1:n
                 try
-                    load([top '/Results/ROM/other/LF_EIT_' num2str(kk) '.mat'], 'ROM')
+                    load([obj.top '/Results/ROM/other/LF_EIT_' num2str(kk) '.mat'], 'ROM')
                     if size(ROM.V,1) > ROM.L
                         ROM.V = ROM.V(end-(ROM.L-1):end,:);
                     end
@@ -29,7 +28,7 @@ classdef RBModelClass < OrderedModelClass
             
         end
 
-        function saveROM(obj,top)
+        function saveROM(obj)
         %
         % saveROM(top)
         %
@@ -42,13 +41,9 @@ classdef RBModelClass < OrderedModelClass
         %
 
             RBModel = obj;
-            if obj.verbose
-                save([top '/Results/verbose/RBModel.mat'],'RBModel')
-            else
-                save([top '/Results/ROM/RBModel.mat'],'RBModel')
-                fprintf("\n \n The reduced order model has been saved in the Results/ folder as RBModel. \n \n")
-                fprintf(" \n To run the inverse problem for this model: type `help GenInverse` into the command line. \n \n")
-            end
+            save([obj.top '/Results/ROM/RBModel.mat'],'RBModel')
+            fprintf("\n \n The reduced order model has been saved in the Results/ folder as RBModel. \n \n")
+            fprintf(" \n To run the inverse problem for this model: type `help GenInverse` into the command line. \n \n")
         end
 
         function runInverse(obj,varargin)

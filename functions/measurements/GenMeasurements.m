@@ -11,33 +11,34 @@ function GenMeasurements(varargin)
 %   OrderedModelClass.patterns'.
 %
 % Arguments:
-%   synth_cond          - (essential) the conductivities of the tissues in
+%   synth_cond: (essential) the conductivities of the tissues in
 %                         the head model
-%   model               - path to the head model
-%   sinks_path          - path the file with the injection patterns
-%   sinks               - the injection pattern data in a 2D array
-%   current             - injection current
-%   top                 - path to the top of the ROMEG data tree
-%   folder              - which Results folder would you like to change into
-%   num_samples         - number of conductivity samples
-%   sample_num          - array of sample numbers to generate (e.g 10:20)
-%   mu_min              - (essential for num_sample) array of the minimum conductivity values
-%   mu_max              - (essential for num_sample) array of the maximum conductivity values
-%   noise               - how much noise do you want to include?
-%   ROM                 - would you like these to be calculated using ROM?
-%   use_sinks           - tell this function that ROM used 'use_sinks'
-%   anis_tan            - array of tissue numbers to tag with tangential
+%   model: path to the head model
+%   sinks_path: path the file with the injection patterns
+%   sinks: the injection pattern data in a 2D array
+%   current: injection current
+%   top: path to the top of the ROMEG data tree
+%   num_samples: number of conductivity samples
+%   sample_num: array of sample numbers to generate (e.g 10:20)
+%   mu_min: (essential for num_sample) array of the minimum conductivity values
+%   mu_max: (essential for num_sample) array of the maximum conductivity values
+%   noise: how much noise do you want to include?
+%   ROM: would you like these to be calculated using ROM?
+%   use_sinks: tell this function that ROM used 'use_sinks'
+%   anis_tan: array of tissue numbers to tag with tangential
 %                         conductivity
-%   anis_rad            - array of tissue numbers to tag with radial
+%   anis_rad: array of tissue numbers to tag with radial
 %                         conductivity.
-%   angles              - true if model contains theta values (default: false)
-%   ratio               - The ratio between tan and rad conds, e.g, 5
+%   angles: true if model contains theta values (default: false)
+%   ratio: The ratio between tan and rad conds, e.g, 5
 %                         means tan is 5 times rad. A value of 1 will give
 %                         an isotropic conductivity.
-%   new_sinks           - (boolean) use a new set of sinks called new_sinks.mat
-%   redo                - Redo the measurements using existing prep.mat
+%   new_sinks: (boolean) use a new set of sinks called new_sinks.mat
+%   redo: Redo the measurements using existing prep.mat
 %                         file
-%   RB_path             - path for the RBModel if NOT in $ROMEG_DATA
+%   RB_path: path for the RBModel if NOT in $ROMEG_DATA
+%   debug: (boolean) turn debug mode on
+%   Cluster: should these measurements be made on the cluster?
 %
 %
 % Examples:
@@ -56,9 +57,9 @@ function GenMeasurements(varargin)
     params = [];
     params_S = struct();
     paramslist = [{'synth_cond'},{'model'},{'sinks_path'},{'sinks'},{'current'}, ...
-        {'top'},{'folder'},{'num_samples'},{'mu_min'},{'mu_max'},{'noise'},{'ROM'}, ...
+        {'top'},{'num_samples'},{'mu_min'},{'mu_max'},{'noise'},{'ROM'},{'Cluster'}, ...
         {'use_sinks'},{'anis_tan'},{'anis_rad'},{'angles'},{'ratio'},{'new_sinks'}, ...
-        {'redo'},{'sample_num'},{'RB_path'}];
+        {'redo'},{'sample_num'},{'RB_path'},{'debug'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs
@@ -68,22 +69,14 @@ function GenMeasurements(varargin)
             end
         end
     end
-    
-    if isfield(params_S,'folder')
-        OrderedModelClass.changePath(params_S.folder)
-    end
 
     if ~isfield(params_S,'model')
-        disp("Using example Spherical head model.")
-        tree = getenv("ROMEG");
-        params=[{'model'} {strcat(tree,'/Models/Spherical/head_model.mat')} params];
+        error('Please provide path to head model.')
     end
 
     if ~isfield(params_S,'current')
         params = [params {'current'} {0.020e-3}];
     end
-    
-    Data = MeasurementClass(params);
 
     if isfield(params_S,'synth_cond') %%~isfield(params_S,'num_samples') && ~isfield(params_S,'sample_num')
         %params_S.num_samples = 1;
@@ -113,6 +106,11 @@ function GenMeasurements(varargin)
         samples = 1:params_S.num_samples;
     end
 
+    Data = MeasurementClass(params);
+    Data = Data.startLogger('Data');
+    Data = Data.processModel();
+    Data.SL = length(unique(Data.f(:,end)))-1;
+    
     for i = 1:length(samples)
         
         Data.synth_cond = synth_cond(i,:);
@@ -122,7 +120,7 @@ function GenMeasurements(varargin)
         else
             Data = Data.checkPaths('type','measurement','num',samples(i),'RB_path',params_S.RB_path);
         end
-
+        
         Data = Data.loadSinks();
         
         if ~isfield(params_S,'ROM')
@@ -142,15 +140,21 @@ function GenMeasurements(varargin)
                 disp(['Redo Warning: switched sinks to local ROM version of size ' num2str(size(Data.sinks))])
             end
             
-            Data.savePrep();
+            if isfield(params_S,'Cluster') && params_S.Cluster
+                Data.savePrep();
 
-            setenv("num",num2str(Data.num_patterns));
+                setenv("num",num2str(Data.num_patterns));
 
-            [status,cmdout] = system('sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.err --job-name SYNTH $ROMEG/Functions/Cluster/cluster_job.sh measurement');
-            disp(cmdout)
-            
-            OrderedModelClass.wait('SYNTH',20);
-            
+                [status,cmdout] = system('sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.err --job-name SYNTH $ROMEG/Functions/Cluster/cluster_job.sh measurement');
+                disp(cmdout)
+
+                OrderedModelClass.wait('SYNTH',20);
+            else
+                for ii = 1:Data.num_patterns
+                    Data = Data.genData(ii);
+                    Data.saveData(ii);
+                end
+            end
         else
             
             Data = Data.loadLF();
