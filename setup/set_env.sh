@@ -26,22 +26,17 @@ read -e -p "Path (use tab for completion): " path
 if [[ $path = "" ]]; then
 	export ROMEG_DATA=$ROMEG/results
        	
-	if [ -d ${path}/results ] || [ -d ${path}results ]; then
+	if [ -d ${ROMEG}/results ]; then
 		echo "Using ROMpEIT/results folder for data storage."
 	else
-		echo "Making ROMpEIT/results folder for data storage"
-		end=`echo $path | rev | cut -c 1`
-	        if [[ end = "/" ]]; then
-			mkdir ${path}logs
-		else
-			mkdir ${path}/logs
-		fi
+		echo "Making ROMpEIT/results folder for data storage."
+		mkdir ${ROMEG}/results
 	fi
 else
 	export ROMEG_DATA=$path
 fi
 
-if [ -d ${path}/logs ] || [ -d ${path}logs ]; then
+if [ -d ${ROMEG_DATA}/logs ] || [ -d ${ROMEG_DATA}logs ]; then
 	echo "Using /logs folder for logging."
 else
 	read -p "There is no logging folder in this directory, would you like to create one? (y/n): " ans
