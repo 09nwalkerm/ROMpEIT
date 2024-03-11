@@ -41,11 +41,11 @@ if [ -d ${ROMEG_DATA}/logs ] || [ -d ${ROMEG_DATA}logs ]; then
 else
 	read -p "There is no logging folder in this directory, would you like to create one? (y/n): " ans
 	if [[ $ans = "y" ]] || [[ $ans = "Y" ]] || [[ $ans = "yes" ]]; then
-		end=`echo $path | rev | cut -c 1`
+		end=`echo $ROMEG_DATA | rev | cut -c 1`
 	        if [[ end = "/" ]]; then
-			mkdir ${path}logs
+			mkdir ${ROMEG_DATA}logs
 		else
-			mkdir ${path}/logs
+			mkdir ${ROMEG_DATA}/logs
 		fi
 	fi
 fi
