@@ -71,9 +71,11 @@ classdef OrderedModelClass
             if isa(obj,"ROMClass")
                 matrix_field = 'ANq';
                 source_field = 'FNq';
+                obj.logger.trace('muAssemble','Using ANq and FNq matrices in assembly')
             elseif isa(obj,"FOMClass")
                 matrix_field = 'Aq';
                 source_field = 'Fq';
+                obj.logger.debug('muAssemble','Using Aq and Fq matrices in assembly')
             end
 
             active = obj.active;
@@ -112,29 +114,29 @@ classdef OrderedModelClass
 
         function obj = processModel(obj)
 
-            disp('Loading Model...')
+            obj.logger.info('processModel','Loading Model...')
 
             if isempty(obj.angles) || (~obj.angles)%isempty(obj.anis_rad) || (~isempty(obj.anis_rad) && (~obj.angles)) %|| ~isfield(obj,'anis_rad')
                 try
                     load(obj.model,'p','t','f')
                     obj.p = p; obj.t = t; obj.f = f; %obj.Ind_E = Ind_E;
-                    disp('Head model loaded')
+                    obj.logger.info('processModel','p,t,f from head model loaded')
                 catch
-                    fprintf("Cannot load head model, please check path given and that the file contains p,t,f,Ind_E values")
+                    obj.logger.error('processModel','Cannot load head model, please check path given and that the file contains p,t,f values')
                     error('Cannot load head model')
                 end
             else
                 try
                     load(obj.model,'p','t','f','theta')
                     obj.p = p; obj.t = t; obj.f = f; obj.theta = theta;
-                    disp('Head model loaded with angles')
+                    obj.logger.info('processModel','p,t,f,theta from head model loaded with angles loaded')
                 catch ME
                     switch ME.identifier
                         case 'MATLAB:load:couldNotReadFile'
-                        fprintf("Cannot load head model, please check path given \n\n")
+                        obj.logger.error('processModel','Cannot load head model, please check path given')
                         case 'MATLAB:UndefinedFunction'
-                            fprintf("At least one variable missing, please ensure the head model file contains p,t,f,theta variables.\n\n")
-                            fprintf("Or specify the name-value pair 'angles' false to have it generated.")
+                            obj.logger.error('processModel','At least one variable missing, please ensure the head model file contains p,t,f,theta variables.')
+                            obj.logger.error('processModel','Or specify the name-value pair angles-false to have it generated.')
                             error('Missing variables')
                         otherwise
                             rethrow(ME)
@@ -149,24 +151,25 @@ classdef OrderedModelClass
                 if isempty(obj.sinks) && isempty(obj.sinks_path)
                     if obj.new_sinks
                         try
-                            disp(['Loading sinks from ' obj.top '/Results/ROM/new_sinks.mat'])
                             load([obj.top '/Results/ROM/new_sinks.mat'],'sinks')
+                            obj.logger.info('loadSinks',['Loading sinks from ' obj.top '/Results/ROM/new_sinks.mat'])
                         catch
-                            disp('No path or new_sinks.mat file provided and none available in Results folder.')
-                            disp("Please make new_sinks.mat using OrderedModelClass.patterns and rerun function.")
-                            disp("Alternatively make one manually with custom injection patterns")
-                            disp('See `help OrderedModelClass.patterns` for guidance.')
+                            obj.logger.error('loadSinks','No path or new_sinks.mat file provided and none available in Results folder.')
+                            obj.logger.error('loadSinks',"Please make new_sinks.mat using OrderedModelClass.patterns and rerun function.")
+                            obj.logger.error('loadSinks',"Alternatively make one manually with custom injection patterns")
+                            obj.logger.error('loadSinks','See `help OrderedModelClass.patterns` for guidance.')
                             error('No new_sinks.mat file found')
                         end
                     else
                         try
                             disp(['Loading sinks from ' obj.top '/Results/ROM/sinks.mat'])
                             load([obj.top '/Results/ROM/sinks.mat'],'sinks')
+                            obj.logger.info('loadSinks',['Loading sinks from ' obj.top '/Results/ROM/sinks.mat'])
                         catch
-                            disp('No path or sinks.mat file provided and none available in Results folder.')
-                            disp("Please make sinks.mat using OrderedModelClass.patterns and rerun function.")
-                            disp("Alternatively make one manually with custom injection patterns")
-                            disp('See `help OrderedModelClass.patterns` for guidance.')
+                            obj.logger.error('loadSinks','No path or sinks.mat file provided and none available in Results folder.')
+                            obj.logger.error('loadSinks',"Please make sinks.mat using OrderedModelClass.patterns and rerun function.")
+                            obj.logger.error('loadSinks',"Alternatively make one manually with custom injection patterns")
+                            obj.logger.error('loadSinks','See `help OrderedModelClass.patterns` for guidance.')
                             error('No sinks.mat file found')
                         end
                     end
@@ -218,9 +221,11 @@ classdef OrderedModelClass
                         OrderedModelClass.changePath('ROM');
                         %obj.top = [data '/ROM'];
                         OrderedModelClass.setupFiles('ROM',true);
+                        obj.logger.debug('checkPaths','Set up ROM folder below $ROMEG_DATA')
                     else
                         %disp('Warning: ROM folder in data path already exists, overwriting.')
                         OrderedModelClass.changePath('ROM')
+                        obj.logger.warning('checkPaths','ROM folder already set up, overwriting')
                         %obj.top = [data '/ROM'];
                     end
                 elseif strcmp(params.type,'measurement') || strcmp(params.type,'inverse') || strcmp(params.type,'bound')
@@ -234,8 +239,9 @@ classdef OrderedModelClass
                         else
                             OrderedModelClass.setupFiles('ROM',false)
                         end
+                        obj.logger.debug('checkPaths',['Set up file system in Result' num2str(params.num) 'below $ROMEG_DATA'])
                     else
-                        disp(['Warning: Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
+                        obj.logger.warning('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
                         %obj.top = [data '/Result' num2str(params.num)];
 
@@ -248,7 +254,7 @@ classdef OrderedModelClass
                         %obj.top = [data '/Result' num2str(params.num)];
                         OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                     else
-                        disp(['Warning: Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
+                        obj.logger.warning('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
                         %obj.top = [data '/Result' num2str(params.num)];
                     end

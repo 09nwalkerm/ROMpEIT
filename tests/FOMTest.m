@@ -22,7 +22,7 @@ classdef FOMTest < matlab.unittest.TestCase
 
     methods (TestClassSetup)
         function classSetup(FOMTest,model_shape,model_type)
-            model = ['Models/' model_shape '/' model_type '.mat'];
+            model = ['models/' model_shape '/' model_type '.mat'];
             FOM = FOMClass('model',model,'nic',20);
             FOMTest.FOM_test=FOM;
             FOMTest.FOM_test = FOMTest.FOM_test.assembleFOM();
