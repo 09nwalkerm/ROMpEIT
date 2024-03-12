@@ -21,6 +21,7 @@ classdef ROMTest < matlab.unittest.TestCase
     methods (TestClassSetup)
         function classSetup(ROMTest,electrode,tolGREEDY,Nmax)
             load('tests/FOM.mat','FOM')
+            FOM = FOM.startLogger();
             ROMTest.FOM=FOM;
             load('tests/sinks.mat','sinks')
             FOM.sinks = sinks;

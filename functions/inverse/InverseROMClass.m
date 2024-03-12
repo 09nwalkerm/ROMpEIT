@@ -15,7 +15,7 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
 
             %obj = obj.processArgs(varargin);
             obj@OrderedModelClass(varargin)
-            obj = obj.getTop();
+            obj = obj.getTOP();
             obj = obj.loadSinks();
 
         end

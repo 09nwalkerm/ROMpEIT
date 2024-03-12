@@ -63,7 +63,9 @@ classdef ROMClass < OrderedModelClass
             %obj = obj.processArgs(varargin);
             obj@OrderedModelClass(varargin)
             obj = obj.getTOP();
-            obj.FOM = FOMClass.loadFOM(obj.top);
+            if isempty(obj.FOM)
+                obj.FOM = FOMClass.loadFOM(obj.top);
+            end
             obj = obj.processArgs(obj.FOM.paramsROM);
             obj = obj.startLogger();
         end

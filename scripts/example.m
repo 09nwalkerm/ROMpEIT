@@ -9,8 +9,8 @@ model = '/home/c1616132/Documents/PhD/ROMEG/Models/Spherical/head_model.mat';
 
 OrderedModelClass.patterns('model',model,'electrodes',[63,64,65])
 
-GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'nic',15,...
-    'Nmax',8,'current',0.02e-3,'debug',true)
+GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'nic',40,...
+    'Nmax',10,'current',0.02e-3,'debug',true)
 
 GenMeasurements()
 

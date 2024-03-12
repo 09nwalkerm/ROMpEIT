@@ -49,9 +49,9 @@ classdef FOMClass < OrderedModelClass
         %   current: injection current used.
         %
             
-%             if isa(varargin{1},'cell')
-%                varargin = varargin{1};
-%             end
+            if isa(varargin{1},'cell')
+               varargin = varargin{1};
+            end
 
 %             for i=1:2:length(varargin)
 %                 if ischar(varargin{i}) % check if is character
@@ -60,7 +60,7 @@ classdef FOMClass < OrderedModelClass
 %             end
 
             %obj = obj.processArgs(varargin);
-            obj@OrderedModelClass(varargin{1})
+            obj@OrderedModelClass(varargin)
             %obj = obj.getTOP();
 
         end

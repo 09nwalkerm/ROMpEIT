@@ -15,11 +15,15 @@ classdef RBFTest < matlab.unittest.TestCase
         function loadFOM(obj)
             load("tests/FOM.mat",'FOM')
             obj.FOM = FOM;
+            obj.FOM = obj.FOM.startLogger();
+            obj.FOM.logger.info('loadFOM','Logger on')
         end
     end
     
     methods (Test,ParameterCombination='sequential')
         function Eigtest(obj)
+            %obj.FOM.startLogger();
+            %obj.FOM.logger.info('Eigtest','Logger on')
             [obj.beta,~]=femeg_ROM_RBF_offline_dual_iter(obj.FOM,1);
             disp(['Beta from Eig func -- ' num2str(obj.beta)])
             verifyEqual(obj,obj.beta,obj.FOM.betaa(1),"AbsTol",1e-6)
