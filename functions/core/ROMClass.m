@@ -60,21 +60,25 @@ classdef ROMClass < OrderedModelClass
         %   top: Path to top of ROMEG tree
         %
             
-            obj = obj.processArgs(varargin);
+            %obj = obj.processArgs(varargin);
+            obj@OrderedModelClass(varargin)
             obj = obj.getTOP();
+            obj.FOM = FOMClass.loadFOM(obj.top);
+            obj = obj.processArgs(obj.FOM.paramsROM);
+            obj = obj.startLogger();
         end
 
         function obj = buildROM(obj)
             
-            FOM = obj.FOM;
+            obj = obj.popFields();
 
-            [obj,FOM] = obj.solvePrelim(FOM);
+            [obj,obj.FOM] = obj.solvePrelim(obj.FOM);
 
-            obj = obj.sampleSpace(FOM);
+            obj = obj.sampleSpace(obj.FOM);
 
-            obj = obj.runGreedy(FOM);
+            obj = obj.runGreedy(obj.FOM);
 
-            obj = obj.calcXnorm(FOM);
+            obj = obj.calcXnorm(obj.FOM);
 
             obj = obj.cleanROM();
 
@@ -87,9 +91,9 @@ classdef ROMClass < OrderedModelClass
         function obj = popFields(obj)
             % Populate the ROMClass object fields from the arguments.
             
-            FOM = FOMClass.loadFOM(obj.top,obj.verbose);
-            
-            obj = obj.processArgs(FOM.paramsROM);
+%             obj.FOM = FOMClass.loadFOM(obj.top);
+%             
+%             obj = obj.processArgs(FOM.paramsROM);
 
             if isempty(obj.current)
                 obj.current = 0.020e-3;
@@ -98,29 +102,27 @@ classdef ROMClass < OrderedModelClass
             if obj.use_sinks
                 if ~isfield(obj,'top'), obj.top = getenv("ROMEG_TOP"); end
                 obj = obj.loadSinks();
-                disp('Using sinks from file for injection and sink electrodes')
+                obj.logger.info('popFields','Using sinks from file for injection and sink electrodes')
                 obj.injection = obj.sinks(obj.electrode,1);
                 obj.sink_elec = obj.sinks(obj.electrode,2:end);
             else
                 obj.injection = obj.electrode;
-                obj.sink_elec = FOM.L;
+                obj.sink_elec = obj.FOM.L;
             end
 
             obj.N=0;
             obj.V=[];
-            obj.Qa=FOM.Qa;
-            obj.Qf=FOM.Qf;
-            obj.P=FOM.P;
-            obj.active = FOM.active;
-            obj.non_active = FOM.non_active;
-            obj.mu_max = FOM.mu_max;
-            obj.mu_min = FOM.mu_min;
-            obj.L = FOM.L;
+            obj.Qa=obj.FOM.Qa;
+            obj.Qf=obj.FOM.Qf;
+            obj.P=obj.FOM.P;
+            obj.active = obj.FOM.active;
+            obj.non_active = obj.FOM.non_active;
+            obj.mu_max = obj.FOM.mu_max;
+            obj.mu_min = obj.FOM.mu_min;
+            obj.L = obj.FOM.L;
             
             %%% Bin p,t,f to save memory
-            FOM.p=[]; FOM.t=[]; FOM.f=[];
-            
-            obj.FOM = FOM;
+            obj.FOM.p=[]; obj.FOM.t=[]; obj.FOM.f=[];
         end
 
         function [obj,FOM] = solvePrelim(obj,FOM)
@@ -128,11 +130,11 @@ classdef ROMClass < OrderedModelClass
             FOM.Fq{1}=sparse([FOM.np+obj.injection FOM.np+obj.sink_elec],ones(1,size(obj.sink_elec,2)+1),[obj.current -ones(1,size(obj.sink_elec,2))*(obj.current)/size(obj.sink_elec,2)],FOM.np+FOM.L,1);
             %%%%% Solve preliminary systems (Cqq)
             obj.tol=1e-8;
-            fprintf('\n ** Computing Cqq ** \n');
+            obj.logger.info('solvePrelim','\n ** Computing Cqq ** \n');
             [obj.L1,obj.U1]=ilu(FOM.Xnorm);
             for q1=1:FOM.Qf
                 [t,flag_t,res_t]=pcg(FOM.Xnorm,FOM.Fq{q1},obj.tol,2000,obj.L1,obj.U1);
-                disp(['   Done ' num2str(q1) ' out of ' num2str(FOM.Qf) '. Flag: ' num2str(flag_t) '. Res: ' num2str(res_t)])
+                obj.logger.info('solvePrelim',['   Done ' num2str(q1) ' out of ' num2str(FOM.Qf) '. Flag: ' num2str(flag_t) '. Res: ' num2str(res_t)])
                 for q2=1:FOM.Qf
                     obj.Cqq{q1,q2}=t'*FOM.Fq{q2};
                 end
@@ -154,42 +156,42 @@ classdef ROMClass < OrderedModelClass
             while obj.N < obj.Nmax && delta_Max > obj.tolGREEDY && M_sample > 1e-10
                 tic
                     obj.N=obj.N + 1;
-                    fprintf('\n **** Greedy iteration number %d \n', obj.N);
+                    obj.logger.info('runGreedy',['\n **** Greedy iteration number ' num2str(obj.N) ' \n']);
                 
                     mu_a=obj.sample_grid(new_mu_indx,:);
                     sample_grid(new_mu_indx,:)=[];
                     [M_mu,b_mu]=FOM.muAssemble(mu_a);[L_p,U_p]=ilu(M_mu);
                     [zh,flag_re]=pcg(M_mu,b_mu,1e-10,6000,L_p,U_p);disp(['Flag: ' num2str(flag_re)])
 
-                    disp(['The time after full order calc is ' num2str(toc)])
+                    obj.logger.debug('runGreedy',['The time after full order calc is ' num2str(toc)])
                     zeta_n  = Gram_Schmidt_orth(obj.V, zh, FOM.Xnorm);
-                    disp(['The time after gram-schmidt calc is ' num2str(toc)])
+                    obj.logger.debug('runGreedy',['The time after gram-schmidt calc is ' num2str(toc)])
                     obj.V   = [obj.V zeta_n];
                     obj.Greedy_samples(obj.N,:) = mu_a;
                 
                     [obj.ANq, obj.FNq] = project_System_EIT(FOM, obj.V);
-                    disp(['The time after projection is ' num2str(toc)])
+                    obj.logger.debug('runGreedy',['The time after projection is ' num2str(toc)])
                     
                     [M_mu_N,~]=obj.muAssemble(ones(1,size(obj.sample_grid,2)));
                     M_sample = rcond(M_mu_N); % Used to test how singular the reduced stiffness matrix is becoming
-                    disp(['Condition number of reduced stiffness matrix is currently ' num2str(M_sample)])
-                    disp(['The time after rcond calc is ' num2str(toc)])
+                    obj.logger.debug('runGreedy',['Condition number of reduced stiffness matrix is currently ' num2str(M_sample)])
+                    obj.logger.debug('runGreedy',['The time after rcond calc is ' num2str(toc)])
                     if (M_sample<1e-10)
-                        disp('Stopping Greedy Algorithm. Removing last snapshot...')
+                        obj.logger.info('runGreedy','Stopping Greedy Algorithm. Removing last snapshot...')
                         obj.V=obj.V(:,1:end-1);
                         obj.Greedy_samples = obj.Greedy_samples(1:end-1,:);
                         obj.N = obj.N -1;
                         [obj.ANq, obj.FNq] = project_System_EIT(FOM, obj.V);
-                        disp(['Reduced Order Model stopped at ' num2str(obj.N) ' snapshots.'])
+                        obj.logger.info('runGreedy',['Reduced Order Model stopped at ' num2str(obj.N) ' snapshots.'])
                         toc
                         break
                     end
                 
                     obj = femeg_offline_residual_iter_n(FOM,obj,obj.L1,obj.U1,obj.tol);
                     
-                    disp(['The time after residual calc is ' num2str(toc)])
+                    obj.logger.debug('runGreedy',['The time after residual calc is ' num2str(toc)])
                     time1 = tic;
-                    fprintf('Evaluate error estimate ... \n')
+                    obj.logger.debug('runGreedy','Evaluate error estimate ... \n')
                     delta_N = zeros(1,size(sample_grid,1));
 
                     obj.Xnorm = obj.V(1:FOM.np,:)'*(FOM.Xnorm(1:FOM.np,1:FOM.np)*obj.V(1:FOM.np,:)); % re new
@@ -203,13 +205,13 @@ classdef ROMClass < OrderedModelClass
                         delta_N(ii)=femeg_ROM_error_estimate_eit(obj,zN,sample_grid(ii,:))/betaa/norm(zN);
                     end
                     
-                    disp(['The time after error estimates is ' num2str(toc)])
-                    disp(['Error estimates took: ' num2str(toc(time1))])
+                    obj.logger.debug('runGreedy',['The time after error estimates is ' num2str(toc)])
+                    obj.logger.debug('runGreedy',['Error estimates took: ' num2str(toc(time1))])
                     [delta_Max, new_mu_indx] = max(delta_N);
                     
                     delta_Mean=mean(delta_N);
-                    fprintf(' Max Delta_N = %2.3e,   ', delta_Max)
-                    fprintf(' Mean Delta_N = %2.3e \n', delta_Mean)
+                    obj.logger.info('runGreedy',[' Max Delta_N =  ' num2str(delta_Max)])
+                    obj.logger.info('runGreedy',[' Mean Delta_N = ' num2str(delta_Mean)])
                 
                     obj.delta_Max(obj.N) = delta_Max;
                     obj.delta_Mean(obj.N) = delta_Mean;
@@ -228,19 +230,15 @@ classdef ROMClass < OrderedModelClass
         function obj = cleanROM(obj)
         % Some cleaning
 
-            if obj.verbose
-                disp("Keeping additonal info in RBModel.mat for debugging or analysis")
-            else
-                %obj.V=obj.V(end-obj.L+1:end,:);
-                obj.dqq = [];
-                obj.Eqq=[];
-                obj.Cqq=[];
-                obj.Z=[];
-                obj.FOM=[];
-                obj.L1 = [];
-                obj.U1 = [];
-                obj.XAV = [];
-            end
+            %obj.V=obj.V(end-obj.L+1:end,:);
+            obj.dqq = [];
+            obj.Eqq=[];
+            obj.Cqq=[];
+            obj.Z=[];
+            obj.FOM=[];
+            obj.L1 = [];
+            obj.U1 = [];
+            obj.XAV = [];
         end
 
         function saveLF(obj,electrode)

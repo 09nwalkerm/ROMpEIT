@@ -26,15 +26,18 @@ classdef OrderedModelClass
         num_dipoles
         debug           % (boolean) turn debug mode on for logs with 'true'
         Cluster         % is ROM being run on the cluster
-    end
-    
-    properties (Access = protected)
+        log_tag
         logger
     end
+    
+    %properties (Access = protected)
+    %    logger
+    %end
 
     methods
-        function obj = OrderedModelClass()
-            
+        function obj = OrderedModelClass(varargin)
+            obj = obj.processArgs(varargin);
+            obj = obj.startLogger();
         end
         
         function obj = getTOP(obj)
@@ -48,7 +51,14 @@ classdef OrderedModelClass
             end
         end
         
-        function obj = startLogger(obj,tag)
+        function obj = startLogger(obj)
+            
+            if ~isempty(obj.log_tag)
+                tag = obj.log_tag;
+            else
+                tag = 'main';
+            end
+            
             % clear previous logger
             obj.logger = [];
             
@@ -59,11 +69,14 @@ classdef OrderedModelClass
             
             % fetch logger object and load into class
             obj.logger = log4m.getLogger(logpath);
-            obj.logger.trace('OrderedModelClass.startLogger','Loading logger into Class as obj.logger')
+            obj.logger.setCommandWindowLevel(obj.cmdLevel);
             if ~isempty(obj.debug) && obj.debug
                 obj.logger.setLogLevel(obj.logger.DEBUG);
-                obj.logger.info('OrderedModelClass.startLogger','Turning on debug mode')
+                obj.logger.debug('OrderedModelClass.startLogger','Turning on debug mode')
+            else
+                obj.logger.setLogLevel(obj.logLevel);
             end
+            obj.logger.debug('OrderedModelClass.startLogger','Loading logger into Class as obj.logger')
         end
         
         function [M_mu,b_mu] = muAssemble(obj,mu)
@@ -122,6 +135,7 @@ classdef OrderedModelClass
                     obj.p = p; obj.t = t; obj.f = f; %obj.Ind_E = Ind_E;
                     obj.logger.info('processModel','p,t,f from head model loaded')
                 catch
+                    obj.logger.error('processModel',['path given:' obj.model])
                     obj.logger.error('processModel','Cannot load head model, please check path given and that the file contains p,t,f values')
                     error('Cannot load head model')
                 end
@@ -225,7 +239,7 @@ classdef OrderedModelClass
                     else
                         %disp('Warning: ROM folder in data path already exists, overwriting.')
                         OrderedModelClass.changePath('ROM')
-                        obj.logger.warning('checkPaths','ROM folder already set up, overwriting')
+                        obj.logger.warn('checkPaths','ROM folder already set up, overwriting')
                         %obj.top = [data '/ROM'];
                     end
                 elseif strcmp(params.type,'measurement') || strcmp(params.type,'inverse') || strcmp(params.type,'bound')
@@ -241,7 +255,7 @@ classdef OrderedModelClass
                         end
                         obj.logger.debug('checkPaths',['Set up file system in Result' num2str(params.num) 'below $ROMEG_DATA'])
                     else
-                        obj.logger.warning('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
+                        obj.logger.warn('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
                         %obj.top = [data '/Result' num2str(params.num)];
 
@@ -254,7 +268,7 @@ classdef OrderedModelClass
                         %obj.top = [data '/Result' num2str(params.num)];
                         OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                     else
-                        obj.logger.warning('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
+                        obj.logger.warn('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
                         %obj.top = [data '/Result' num2str(params.num)];
                     end
@@ -307,25 +321,16 @@ classdef OrderedModelClass
         %           'electrodes',[1,20,35,56,42,120,13,67])
         %
 
-            obj = OrderedModelClass();
-            obj = obj.processArgs(varargin);
+            obj = OrderedModelClass(varargin);
+            %obj = obj.processArgs(varargin);
+            %OrderedModelClass.changePath('ROM');
+            %obj = obj.getTop();
+            %obj = obj.startLogger();
             obj = obj.checkPaths('type','ROM');
-
-            if isempty(obj.top)
-                try
-                    top = getenv("ROMEG_TOP");
-                    obj.top=top;
-                catch
-                    disp('Please provide path to top of ROMEG tree using either "top" argument or by setting ROMEG_TOP environment variable')
-                    error('Top of ROMEG tree is not defined')
-                end
-            end
-
             obj = obj.processModel();
+            f = obj.f; p = obj.p;
 
-            f = obj.f; p = obj.p; 
-
-            disp('Generating sink patterns...')
+            obj.logger.info('patterns','Generating sink patterns...')
             
             if isempty(obj.electrodes) && ~isempty(obj.num_sinks)
                 obj.electrodes = 1:length(unique(f(:,4)))-1;
@@ -381,7 +386,7 @@ classdef OrderedModelClass
                 save([obj.top '/Results/ROM/sinks.mat'],'sinks')
             end
                 
-            disp('Saved sink patterns to /Results/ROM folder')
+            obj.logger.info('patterns','Saved sink patterns to /Results/ROM folder')
         end
         
         function wait(NAME,PAUSE,varargin)
@@ -460,7 +465,6 @@ classdef OrderedModelClass
             if ~isfolder([top '/Results'])
                 disp('Setting up new Results folder')
                 mkdir([top '/Results'])
-                mkdir([top '/Results/verbose'])
                 mkdir([top '/Results/slurm_logs'])
                 mkdir([top '/Results/logs'])
                 if ~params.ROM

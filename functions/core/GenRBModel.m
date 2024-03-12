@@ -34,12 +34,13 @@ function [FOM,RBModel] = GenRBModel(varargin)
 %                  with tolGREEDY, the algorithm will stop at which 
 %                  ever value is reached first. Recommended < 300.
 %   use_sinks: (boolean) would you like to use the sinks.mat file for
-%                  injection patterns
+%                  injection patterns. default = true
 %   complim: the limit on the number of nodes used at one time on the
 %                  cluster
 %   use_FOM: is there an existing FOM to look for instead of making a
 %                  new one.
 %   debug: (boolean) turn debug mode on
+%   Cluster: is there a compute cluster running SLURM accessible
 %
 % Examples:
 %   
@@ -69,9 +70,10 @@ function [FOM,RBModel] = GenRBModel(varargin)
     paramsFOM_S = [];
     paramsROM = [];
     paramsROM_S = [];
-    ROMlist = [{'electrode'},{'current'},{'tolGREEDY'},{'Nmax'},{'debug'},{'top'},{'split'},{'use_sinks'}];
+    ROMlist = [{'electrode'},{'current'},{'tolGREEDY'},{'Nmax'},{'debug'},{'top'},{'split'},{'use_sinks'},...
+        {'Cluster'},{'complim'}];
     FOMlist = [{'model'},{'mu_min'},{'mu_max'},{'nic'},{'anis_tan'},{'anis_rad'},{'angles'},{'debug'},...
-        {'top'},{'complim'},{'use_FOM'}];
+        {'top'},{'complim'},{'use_FOM'},{'Cluster'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs
@@ -92,27 +94,32 @@ function [FOM,RBModel] = GenRBModel(varargin)
     
     %% Step 1: Building the Full Order Model
     
-    OrderedModelClass.changePath('ROM')
+    %OrderedModelClass.changePath('ROM')
     
     if isempty(find(strcmp('use_FOM',paramsFOM)))
 
         FOM = FOMClass(paramsFOM);
-        FOM = FOM.startLogger('FOM');
         FOM = FOM.checkPaths('type','ROM');
         FOM = FOM.buildFOM();
         FOM = FOM.saveROMparams(paramsROM);
         FOM.saveFOM();
         setenv('SL',num2str(FOM.nic));
+        if isfield(paramsFOM_S,'Cluster') && paramsFOM_S.Cluster
+            if isempty(find(strcmp('complim',paramsFOM)))
+                !sbatch --array 1-$SL -o $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.err --job-name BETA $ROMEG/functions/cluster/cluster_job.sh BETA
+            else
+                setenv("COMPLIM",num2str(FOM.complim))
+                !sbatch --array 1-$SL%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.err --job-name BETA $ROMEG/functions/cluster/cluster_job.sh BETA
+            end
 
-        if isempty(find(strcmp('complim',paramsFOM)))
-            !sbatch --array 1-$SL -o $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.err --job-name BETA $ROMEG/Functions/Cluster/cluster_job.sh BETA
+            % Wait until the job is done
+            OrderedModelClass.wait('BETA',40);
         else
-            setenv("COMPLIM",num2str(FOM.complim))
-            !sbatch --array 1-$SL%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/BETA_%a_%j.err --job-name BETA $ROMEG/Functions/Cluster/cluster_job.sh BETA
+            for ii=1:FOM.nic
+                betaa=femeg_ROM_RBF_offline_dual_iter(FOM,ii);
+                save([FOM.top '/Results/ROM/other/betaa_' num2str(ii)],'betaa')
+            end
         end
-
-        % Wait until the job is done
-        OrderedModelClass.wait('BETA',40);
 
         FOM=FOM.readBeta();
         FOM=femeg_ROM_RRBF(FOM); % Compute RRBF function
@@ -120,34 +127,45 @@ function [FOM,RBModel] = GenRBModel(varargin)
     else
         disp('Using FOM.mat from Results/ folder')
         load([top '/Results/ROM/FOM.mat'],'FOM')
-        FOM = FOM.startLogger('FOM');
+        FOM = FOM.startLogger();
         FOM = FOM.checkPaths('type','ROM');
     end
     
-    if ~isempty(find(strcmp('use_sinks',paramsROM)))
+    %% Step 2: Making the Reduced Order Model
+    
+    if ~isfield(paramsROM_S,'use_sinks')
         OMC = OrderedModelClass();
         OMC = OMC.checkPaths('type','ROM');
         OMC = OMC.loadSinks();
         setenv('SE',num2str(OMC.num_patterns));
-    else
+        OMC.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
+    elseif isfield(paramsROM_S,'use_sinks') && ~paramsROM_S.use_sinks
         setenv('SE',num2str(FOM.L-1));
         OMC.num_patterns = FOM.L-1;
+        OMC.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
     end
+    
+    if isfield(paramsROM_S,'Cluster') && paramsROM_S.Cluster
+        if isempty(find(strcmp('complim',paramsROM)))
+            !sbatch --array 1-$SE -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/functions/cluster/cluster_job.sh ROM
+        else
+            setenv("COMPLIM",num2str(FOM.complim))
+            !sbatch --array 1-$SE%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/functions/cluster/cluster_job.sh ROM
+        end
 
-    %% Step 2: Making the Reduced Order Model
-
-    if isempty(find(strcmp('complim',paramsFOM)))
-        !sbatch --array 1-$SE -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/Functions/Cluster/cluster_job.sh ROM
+        % Wait until the job is done
+        OrderedModelClass.wait('ROM',180);
     else
-        setenv("COMPLIM",num2str(FOM.complim))
-        !sbatch --array 1-$SE%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/Functions/Cluster/cluster_job.sh ROM
+        for ii=1:OMC.num_patterns
+            ROM=ROMClass('electrode',ii);
+            ROM=ROM.popFields();
+            ROM=ROM.buildROM();
+            ROM.saveLF(ii)
+        end
     end
-
-    % Wait until the job is done
-    OrderedModelClass.wait('ROM',180);
 
     RBModel = RBModelClass();
-    RBModel = RBModel.startLogger();
+    RBModel = RBModel.getTOP();
     RBModel = RBModel.readLF(OMC.num_patterns);
     RBModel.saveROM();
 end

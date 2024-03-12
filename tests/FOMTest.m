@@ -25,6 +25,7 @@ classdef FOMTest < matlab.unittest.TestCase
             model = ['models/' model_shape '/' model_type '.mat'];
             FOM = FOMClass('model',model,'nic',20);
             FOMTest.FOM_test=FOM;
+            FOMTest.FOM_test = FOMTest.FOM_test.processModel();
             FOMTest.FOM_test = FOMTest.FOM_test.assembleFOM();
             load("tests/FOM.mat",'FOM')
             FOMTest.FOM_expected = FOM;

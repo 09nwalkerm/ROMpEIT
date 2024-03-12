@@ -5,8 +5,9 @@ classdef RBModelClass < OrderedModelClass
     methods
         function obj = RBModelClass(varargin)
             
-            obj = obj.processArgs(varargin);
-            obj = obj.getTOP();
+            %obj = obj.processArgs(varargin);
+            obj@OrderedModelClass(varargin)
+            %obj = obj.getTOP();
         end
 
         function obj = readLF(obj,n)

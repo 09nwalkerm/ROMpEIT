@@ -1,4 +1,4 @@
-classdef InverseROMClass < InverseClass
+classdef InverseROMClass < InverseClass & OrderedModelClass
 
     properties
         LF              % ROM model
@@ -13,7 +13,8 @@ classdef InverseROMClass < InverseClass
 
         function obj = InverseROMClass(varargin)
 
-            obj = obj.processArgs(varargin);
+            %obj = obj.processArgs(varargin);
+            obj@OrderedModelClass(varargin)
             obj = obj.getTop();
             obj = obj.loadSinks();
 

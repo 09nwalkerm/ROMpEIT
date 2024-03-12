@@ -27,7 +27,6 @@ classdef InverseClass < OrderedModelClass
         fix_conds       % fix the non active conductivity layers to centre
         active_layers   % when selected by the user, can determine the layers actually used for inverse
         sensitivity
-        use_sinks       % (boolean) use the sinks that were used in ROM training. Warning, if this is off, then ROM should be trained with 1-1 for ALL electrodes.
         complim
         use_noise       % use the measurements with noise
         noise           % for adding noise to the combined measurements
