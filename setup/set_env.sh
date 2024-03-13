@@ -55,6 +55,8 @@ else
 			mkdir ${ROMEG_DATA}/logs
 			export ROMEG_LOGS=${ROMEG_DATA}/logs
 		fi
+	else
+		export ROMEG_LOGS=${ROMEG_DATA}
 	fi
 fi
 
