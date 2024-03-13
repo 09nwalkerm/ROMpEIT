@@ -65,9 +65,11 @@ classdef ROMClass < OrderedModelClass
             obj = obj.getTOP();
             if isempty(obj.FOM)
                 obj.FOM = FOMClass.loadFOM(obj.top);
+                obj.logger.debug('ROMClass','Loading FOM into ROMClass')
             end
             obj = obj.processArgs(obj.FOM.paramsROM);
-            obj = obj.startLogger();
+            obj.logger.debug('ROMClass','Loading the paramsROM arguments from FOM.mat into ROMClass. Some args over-written.')
+            %obj = obj.startLogger();
         end
 
         function obj = buildROM(obj)
@@ -118,7 +120,9 @@ classdef ROMClass < OrderedModelClass
             obj.Qf=obj.FOM.Qf;
             obj.P=obj.FOM.P;
             obj.active = obj.FOM.active;
+            obj.logger.debug('popFields',['active layers set to ' num2str(obj.active)])
             obj.non_active = obj.FOM.non_active;
+            obj.logger.debug('popFields',['non-active layers set to ' num2str(obj.non_active)])
             obj.mu_max = obj.FOM.mu_max;
             obj.mu_min = obj.FOM.mu_min;
             obj.L = obj.FOM.L;
@@ -155,12 +159,15 @@ classdef ROMClass < OrderedModelClass
             delta_Max=obj.tolGREEDY+1;
             new_mu_indx=1; M_sample = 1;
             sample_grid = obj.sample_grid;
+            obj.logger.debug('Greedytest',['Using an Nmax value of ' num2str(obj.Nmax)])
+            obj.logger.debug('Greedytest',['Using an tolGREEDY value of ' num2str(obj.tolGREEDY)])
             while obj.N < obj.Nmax && delta_Max > obj.tolGREEDY && M_sample > 1e-10
                 tic
                     obj.N=obj.N + 1;
                     obj.logger.info('runGreedy',['\n **** Greedy iteration number ' num2str(obj.N) ' \n']);
                 
                     mu_a=obj.sample_grid(new_mu_indx,:);
+                    obj.logger.debug('runGreedy',['Conductivities being used for this snapshot are ' num2str(mu_a)])
                     sample_grid(new_mu_indx,:)=[];
                     [M_mu,b_mu]=FOM.muAssemble(mu_a);[L_p,U_p]=ilu(M_mu);
                     [zh,flag_re]=pcg(M_mu,b_mu,1e-10,6000,L_p,U_p);disp(['Flag: ' num2str(flag_re)])

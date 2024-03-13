@@ -23,7 +23,7 @@ classdef FOMTest < matlab.unittest.TestCase
     methods (TestClassSetup)
         function classSetup(FOMTest,model_shape,model_type)
             model = ['models/' model_shape '/' model_type '.mat'];
-            FOM = FOMClass('model',model,'nic',20);
+            FOM = FOMClass('model',model,'nic',20,'debug',true);
             FOMTest.FOM_test=FOM;
             FOMTest.FOM_test = FOMTest.FOM_test.processModel();
             FOMTest.FOM_test.mu_min = [0.15,0.001,1.1,0.05,5];
