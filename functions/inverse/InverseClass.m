@@ -12,7 +12,7 @@ classdef InverseClass < OrderedModelClass
         data_path       % path to measurment data
         synth_cond      % conductivity set to make the synthetic measurements with
         el_in           % injection electrode
-        injection       % inection electrode pattern number in sink file
+        pattern         % electrode pattern number in sink file
         ROM             % is this being used for ROM inverse
         TRAD            % is the traditional inverse method being run as well?
         lb              % lower conductivity bound
@@ -35,28 +35,34 @@ classdef InverseClass < OrderedModelClass
 
     methods
 
-        function runInverse(obj,injection)
+        function runInverse(obj,pattern)
 
-            obj.injection = injection;
+            obj.pattern = pattern;
             
             if ~isempty(obj.use_sinks) && obj.use_sinks
                 if ~isempty(obj.simultaneous) && obj.simultaneous
-                    obj = obj.loadMultiMeasurements(unique(obj.sinks(:,1))');
+                    obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
                 else
-                    obj = obj.loadMeasurements(obj.injection);
+                    obj = obj.loadMeasurements(obj.pattern);
                 end
             elseif ~isempty(obj.new_sinks) && obj.new_sinks
                 if ~isempty(obj.simultaneous) && obj.simultaneous
-                    sink_nums=unique(obj.sinks)';sink_nums=sink_nums(1:end);
+                    sink_nums=unique(obj.sinks)';sink_nums=sink_nums(1:end);    
+                    noise = obj.use_noise;
+                    obj.use_noise = [];
                     obj = obj.loadMultiMeasurements(sink_nums);
+                    obj.use_noise = noise;
                     measurements=obj.u;obj.u=[];
                     for jj = 1:size(obj.sinks,1)
                         obj = obj.combineMeasurements(jj,measurements);
                     end
                 else
-                    obj = obj.loadMultiMeasurements(obj.sinks(obj.injection,:));
+                    noise = obj.use_noise;
+                    obj.use_noise = [];
+                    obj = obj.loadMultiMeasurements(obj.sinks(obj.pattern,:));
+                    obj.use_noise = noise;
                     measurements=obj.u;obj.u=[];
-                    obj = obj.combineMeasurements(obj.injection,measurements);
+                    obj = obj.combineMeasurements(obj.pattern,measurements);
                 end
             end
             
@@ -79,14 +85,15 @@ classdef InverseClass < OrderedModelClass
             try
                 if ~isempty(obj.use_noise) && obj.use_noise
                     load([path '/pattern_' num2str(num) '_noise.mat'],'Data')
-                    disp(['Loading noisey synthetic pattern ' num2str(num) ' solution...'])
+                    obj.logger.debug('loadMeasurements',['Loading noisey synthetic pattern ' num2str(num) ' solution...'])
                 else
                     load([path '/pattern_' num2str(num) '.mat'],'Data')
-                    disp(['Loading synthetic pattern ' num2str(num) ' solution...'])
+                    obj.logger.debug('loadMeasurements',['Loading synthetic pattern ' num2str(num) ' solution...'])
                 end
                 obj.u{num} = Data.u;
                 obj.synth_cond = Data.synth_cond;
             catch
+                obj.logger.error('loadMeasurements',['Measurements not found for pattern ' num2str(num)])
                 error('Measurement data missing, please either supply real data or generate synthetic data using GenMeasurements.')
             end
         end
@@ -111,13 +118,10 @@ classdef InverseClass < OrderedModelClass
         end
         
         function obj = loadMultiMeasurements(obj,num)
-            
-            noise = obj.use_noise;
-            obj.use_noise = [];
+
             for ii=num
                 obj = obj.loadMeasurements(ii);
             end
-            obj.use_noise = noise;
         end
         
         function obj = addNoise(obj,num)

@@ -17,8 +17,8 @@ classdef InverseTradClass < InverseClass
 
         function obj = setUp(obj)
 
-            obj.el_in = obj.sinks(obj.injection,1);
-            el_in = obj.el_in; el_out = obj.sinks(obj.injection,2:end);
+            obj.el_in = obj.sinks(obj.pattern,1);
+            el_in = obj.el_in; el_out = obj.sinks(obj.pattern,2:end);
 
             FOM = FOMClass.loadFOM(obj.top,false);
             p = FOM.p; t = FOM.t; f = FOM.f; 
@@ -172,7 +172,7 @@ classdef InverseTradClass < InverseClass
             inv.S = [];
             inv.source = [];
             inv.u = [];
-            save([obj.top '/Results/inverse/TRAD/' folder '/inv_' num2str(obj.injection) '.mat'], 'inv')
+            save([obj.top '/Results/inverse/TRAD/' folder '/inv_' num2str(obj.pattern) '.mat'], 'inv')
         end
 
         function savePrep(obj)

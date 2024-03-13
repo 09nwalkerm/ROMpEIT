@@ -163,76 +163,73 @@ classdef ROMClass < OrderedModelClass
             obj.logger.debug('Greedytest',['Using an tolGREEDY value of ' num2str(obj.tolGREEDY)])
             while obj.N < obj.Nmax && delta_Max > obj.tolGREEDY && M_sample > 1e-10
                 tic
-                    obj.N=obj.N + 1;
-                    obj.logger.info('runGreedy',['\n **** Greedy iteration number ' num2str(obj.N) ' \n']);
-                
-                    mu_a=obj.sample_grid(new_mu_indx,:);
-                    obj.logger.debug('runGreedy',['Conductivities being used for this snapshot are ' num2str(mu_a)])
-                    sample_grid(new_mu_indx,:)=[];
-                    [M_mu,b_mu]=FOM.muAssemble(mu_a);[L_p,U_p]=ilu(M_mu);
-                    [zh,flag_re]=pcg(M_mu,b_mu,1e-10,6000,L_p,U_p);disp(['Flag: ' num2str(flag_re)])
+                obj.N=obj.N + 1;
+                obj.logger.info('runGreedy',['\n **** Greedy iteration number ' num2str(obj.N) ' \n']);
 
-                    obj.logger.debug('runGreedy',['The time after full order calc is ' num2str(toc)])
-                    zeta_n  = Gram_Schmidt_orth(obj.V, zh, FOM.Xnorm);
-                    obj.logger.debug('runGreedy',['The time after gram-schmidt calc is ' num2str(toc)])
-                    obj.V   = [obj.V zeta_n];
-                    obj.Greedy_samples(obj.N,:) = mu_a;
-                
+                mu_a=obj.sample_grid(new_mu_indx,:);
+                obj.logger.debug('runGreedy',['Conductivities being used for this snapshot are ' num2str(mu_a)])
+                sample_grid(new_mu_indx,:)=[];
+                [M_mu,b_mu]=FOM.muAssemble(mu_a);[L_p,U_p]=ilu(M_mu);
+                [zh,flag_re]=pcg(M_mu,b_mu,1e-10,6000,L_p,U_p);
+                obj.logger.debug('runGreedy',['PCG Flag: ' num2str(flag_re)])
+
+                obj.logger.debug('runGreedy',['The time after full order calc is ' num2str(toc)])
+                zeta_n  = Gram_Schmidt_orth(obj.V, zh, FOM.Xnorm);
+                obj.logger.debug('runGreedy',['The time after gram-schmidt calc is ' num2str(toc)])
+                obj.V   = [obj.V zeta_n];
+                obj.Greedy_samples(obj.N,:) = mu_a;
+
+                [obj.ANq, obj.FNq] = project_System_EIT(FOM, obj.V);
+                obj.logger.debug('runGreedy',['The time after projection is ' num2str(toc)])
+
+                [M_mu_N,~]=obj.muAssemble(ones(1,size(obj.sample_grid,2)));
+                M_sample = rcond(M_mu_N); % Used to test how singular the reduced stiffness matrix is becoming
+                obj.logger.debug('runGreedy',['Condition number of reduced stiffness matrix is currently ' num2str(M_sample)])
+                obj.logger.debug('runGreedy',['The time after rcond calc is ' num2str(toc)])
+                if (M_sample<1e-10)
+                    obj.logger.info('runGreedy','Stopping Greedy Algorithm. Removing last snapshot...')
+                    obj.V=obj.V(:,1:end-1);
+                    obj.Greedy_samples = obj.Greedy_samples(1:end-1,:);
+                    obj.N = obj.N -1;
                     [obj.ANq, obj.FNq] = project_System_EIT(FOM, obj.V);
-                    obj.logger.debug('runGreedy',['The time after projection is ' num2str(toc)])
-                    
-                    [M_mu_N,~]=obj.muAssemble(ones(1,size(obj.sample_grid,2)));
-                    M_sample = rcond(M_mu_N); % Used to test how singular the reduced stiffness matrix is becoming
-                    obj.logger.debug('runGreedy',['Condition number of reduced stiffness matrix is currently ' num2str(M_sample)])
-                    obj.logger.debug('runGreedy',['The time after rcond calc is ' num2str(toc)])
-                    if (M_sample<1e-10)
-                        obj.logger.info('runGreedy','Stopping Greedy Algorithm. Removing last snapshot...')
-                        obj.V=obj.V(:,1:end-1);
-                        obj.Greedy_samples = obj.Greedy_samples(1:end-1,:);
-                        obj.N = obj.N -1;
-                        [obj.ANq, obj.FNq] = project_System_EIT(FOM, obj.V);
-                        obj.logger.info('runGreedy',['Reduced Order Model stopped at ' num2str(obj.N) ' snapshots.'])
-                        toc
-                        break
-                    end
-                
-                    obj = femeg_offline_residual_iter_n(FOM,obj,obj.L1,obj.U1,obj.tol);
-                    
-                    obj.logger.debug('runGreedy',['The time after residual calc is ' num2str(toc)])
-                    time1 = tic;
-                    obj.logger.debug('runGreedy','Evaluate error estimate ... \n')
-                    delta_N = zeros(1,size(sample_grid,1));
+                    obj.logger.info('runGreedy',['Reduced Order Model stopped at ' num2str(obj.N) ' snapshots.'])
+                    toc
+                    break
+                end
 
-                    obj.Xnorm = obj.V(1:FOM.np,:)'*(FOM.Xnorm(1:FOM.np,1:FOM.np)*obj.V(1:FOM.np,:)); % re new
-                    for ii = 1 : size(sample_grid,1)
-                        
-                        [M_mu_N,b_mu_N]=obj.muAssemble(sample_grid(ii,:));
-                        zN=M_mu_N\b_mu_N;
-                        
-                        betaa=femeg_ROM_RBF_online(sample_grid(ii,:),FOM);betaa=real(betaa);
+                obj = femeg_offline_residual_iter_n(FOM,obj,obj.L1,obj.U1,obj.tol);
 
-                        delta_N(ii)=femeg_ROM_error_estimate_eit(obj,zN,sample_grid(ii,:))/betaa/norm(zN);
-                    end
-                    
-                    obj.logger.debug('runGreedy',['The time after error estimates is ' num2str(toc)])
-                    obj.logger.debug('runGreedy',['Error estimates took: ' num2str(toc(time1))])
-                    [delta_Max, new_mu_indx] = max(delta_N);
-                    
-                    delta_Mean=mean(delta_N);
-                    obj.logger.info('runGreedy',[' Max Delta_N =  ' num2str(delta_Max)])
-                    obj.logger.info('runGreedy',[' Mean Delta_N = ' num2str(delta_Mean)])
-                
-                    obj.delta_Max(obj.N) = delta_Max;
-                    obj.delta_Mean(obj.N) = delta_Mean;
-                    if length(obj.active)==1
-                        obj.delta{obj.N} = delta_N;
-                        obj.sample_grid{obj.N} = sample_grid';
-                    end
-%                     if obj.verbose
-%                         ROM = obj;
-%                         save([obj.top '/Results/verbose/snapshot_' num2str(obj.N) '.mat'],'ROM');
-%                     end
-                toc
+                obj.logger.debug('runGreedy',['The time after residual calc is ' num2str(toc)])
+                time1 = tic;
+                obj.logger.debug('runGreedy','Evaluate error estimate ... \n')
+                delta_N = zeros(1,size(sample_grid,1));
+
+                obj.Xnorm = obj.V(1:FOM.np,:)'*(FOM.Xnorm(1:FOM.np,1:FOM.np)*obj.V(1:FOM.np,:)); % re new
+                for ii = 1 : size(sample_grid,1)
+
+                    [M_mu_N,b_mu_N]=obj.muAssemble(sample_grid(ii,:));
+                    zN=M_mu_N\b_mu_N;
+
+                    betaa=femeg_ROM_RBF_online(sample_grid(ii,:),FOM);betaa=real(betaa);
+
+                    delta_N(ii)=femeg_ROM_error_estimate_eit(obj,zN,sample_grid(ii,:))/betaa/norm(zN);
+                end
+
+                obj.logger.debug('runGreedy',['The time after error estimates is ' num2str(toc)])
+                obj.logger.debug('runGreedy',['Error estimates took: ' num2str(toc(time1))])
+                [delta_Max, new_mu_indx] = max(delta_N);
+
+                delta_Mean=mean(delta_N);
+                obj.logger.info('runGreedy',[' Max Delta_N =  ' num2str(delta_Max)])
+                obj.logger.info('runGreedy',[' Mean Delta_N = ' num2str(real(delta_Mean))])
+
+                obj.delta_Max(obj.N) = delta_Max;
+                obj.delta_Mean(obj.N) = delta_Mean;
+                if length(obj.active)==1
+                    obj.delta{obj.N} = delta_N;
+                    obj.sample_grid{obj.N} = sample_grid';
+                end
+                obj.logger.debug('runGreedy',['Full Greedy Iteration calculated in ' num2str(toc) ' seconds'])
             end
         end
 

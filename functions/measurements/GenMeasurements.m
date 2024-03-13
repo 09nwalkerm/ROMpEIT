@@ -107,9 +107,8 @@ function GenMeasurements(varargin)
     end
 
     Data = MeasurementClass(params);
-    Data = Data.startLogger('Data');
     Data = Data.processModel();
-    Data.SL = length(unique(Data.f(:,end)))-1;
+    %Data.SL = length(unique(Data.f(:,end)))-1;
     
     for i = 1:length(samples)
         

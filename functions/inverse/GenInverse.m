@@ -87,7 +87,6 @@ function GenInverse(varargin)
             OrderedModelClass.sensitivityFiles('layers',params_S.active_layers,'sample_num',i,'order','ROM')
             
             invROM = InverseROMClass(params);
-            invROM = invROM.startLogger('invROM');
             invROM = invROM.checkPaths('type','inverse','num',i);
             invROM.savePrep();
             

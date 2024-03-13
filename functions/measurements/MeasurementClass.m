@@ -20,7 +20,7 @@ classdef MeasurementClass < OrderedModelClass
 
     methods
         function obj = MeasurementClass(varargin)
-
+            
             obj@OrderedModelClass(varargin);
         end
 

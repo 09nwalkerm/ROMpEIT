@@ -48,20 +48,9 @@ classdef FOMClass < OrderedModelClass
         %                conductivity.
         %   current: injection current used.
         %
-            
-            if isa(varargin{1},'cell')
-               varargin = varargin{1};
-            end
 
-%             for i=1:2:length(varargin)
-%                 if ischar(varargin{i}) % check if is character
-%                     obj.(varargin{i}) = varargin{i+1}; % override or add parameters to structure.
-%                 end
-%             end
 
-            %obj = obj.processArgs(varargin);
             obj@OrderedModelClass(varargin)
-            %obj = obj.getTOP();
 
         end
 

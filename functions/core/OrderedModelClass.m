@@ -113,8 +113,10 @@ classdef OrderedModelClass
             
             if ~isempty(args)
                 
-                if isa(args{1},'cell')
-                    args = args{1};
+                while isa(args{1},'cell')
+                    if isa(args{1},'cell')
+                        args = args{1};
+                    end
                 end
 
                 for i = 1:2:length(args) % work for a list of name-value pairs
@@ -322,10 +324,6 @@ classdef OrderedModelClass
         %
 
             obj = OrderedModelClass(varargin);
-            %obj = obj.processArgs(varargin);
-            %OrderedModelClass.changePath('ROM');
-            %obj = obj.getTop();
-            %obj = obj.startLogger();
             obj = obj.checkPaths('type','ROM');
             obj = obj.processModel();
             f = obj.f; p = obj.p;
