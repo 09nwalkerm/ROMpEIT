@@ -13,7 +13,7 @@ cd $ROMEG_TOP
 echo This is running on node `hostname`
 
 /opt/MATLAB/R2021a/bin/matlab -nodisplay -nodesktop -nosplash -r \
-"addpath(genpath([getenv('ROMEG') '/Functions'])); \
+"addpath(genpath([getenv('ROMEG') '/functions'])); \
 addpath(genpath([getenv('ROMEG') '/external'])); \
 cluster_job_$1(); \
 exit;"

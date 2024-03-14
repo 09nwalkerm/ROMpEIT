@@ -11,7 +11,6 @@ classdef MeasurementClass < OrderedModelClass
         mu_min
         mu_max
         noise
-        use_sinks
         ROM
         LF
         CBM
@@ -21,12 +20,8 @@ classdef MeasurementClass < OrderedModelClass
 
     methods
         function obj = MeasurementClass(varargin)
-
-            obj = obj.processArgs(varargin);
-
-            obj = obj.processModel();
-
-            obj.SL = length(unique(obj.f(:,end)))-1;
+            
+            obj@OrderedModelClass(varargin);
         end
 
         function obj = genData(obj,injection)

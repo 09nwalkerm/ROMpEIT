@@ -20,7 +20,7 @@ classdef InverseTest < matlab.unittest.TestCase
         function classSetup(INVTest,snaps,min_snap,use_sinks)
             load('tests/RBModel.mat','RBModel')
             load('tests/sinks.mat','sinks')
-            INVTest.IROM = InverseROMClass('injection',1,'sinks',sinks,'snaps',snaps, ...
+            INVTest.IROM = InverseROMClass('pattern',1,'sinks',sinks,'snaps',snaps, ...
                 'use_sinks',use_sinks,'min_snap',min_snap,'eL',120);
             INVTest.IROM.LF = RBModel.LF;
         end
@@ -35,8 +35,8 @@ classdef InverseTest < matlab.unittest.TestCase
             INVTest.IROM.lb = INVTest.IROM.LF{1}.mu_min(INVTest.IROM.te);
             INVTest.IROM.ub = INVTest.IROM.LF{1}.mu_max(INVTest.IROM.te);
             INVTest.IROM.x0 = (INVTest.IROM.lb + INVTest.IROM.ub)/2;
-            INVTest.IROM.u{INVTest.IROM.injection} = Data.u;
-            INVTest.IROM.el_in = INVTest.IROM.injection;
+            INVTest.IROM.u{INVTest.IROM.pattern} = Data.u;
+            INVTest.IROM.el_in = INVTest.IROM.pattern;
             INVTest.IROM.eL = INVTest.IROM.LF{1}.L;
             INVTest.IROM.synth_cond = Data.synth_cond;
         end

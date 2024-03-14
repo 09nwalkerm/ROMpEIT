@@ -2,7 +2,16 @@ import matlab.unittest.TestSuite;
 import matlab.unittest.TestRunner;
 import matlab.unittest.selectors.HasParameter;
 
+% setting up environment
 mkdir("results")
+mkdir("results/logs")
+mkdir("results/ROM")
+addpath(genpath('functions'))
+addpath(genpath('external'))
+addpath(genpath('models'))
+setenv("ROMEG_LOGS",'results/logs')
+setenv("ROMEG_DATA",'results')
+setenv("ROMEG_TOP",'results/ROM')
 
 s = HasParameter('Property','model_shape','Name','Spherical') & ...
     HasParameter('Property','model_type','Name','head_model') & ...

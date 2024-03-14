@@ -14,11 +14,11 @@
 tree = getenv("ROMEG");
 model = [tree '/Models/Real/head_model_theta.mat']; % path to model to use
 
-data = getenv("ROMEG_DATA");
-jobid = getenv("SLURM_JOB_ID");
-logger = log4m.getLogger([data '/logs/' jobid '.log']);
-logger.setLogLevel(logger.INFO); % set to logger.OFF for only slurm log output
-logger.setCommandWindowLevel(logger.INFO); % set to logger.OFF for only log file input
+%data = getenv("ROMEG_DATA");
+%jobid = getenv("SLURM_JOB_ID");
+%logger = log4m.getLogger([data '/logs/' jobid '.log']);
+%logger.setLogLevel(logger.INFO); % set to logger.OFF for only slurm log output
+%logger.setCommandWindowLevel(logger.INFO); % set to logger.OFF for only log file input
 
 % Conds for spherical head model, comment out as necessary
 %mu_max=[0.66,0.060,2.3,1.00,5]; % maximum conductivities
@@ -41,7 +41,6 @@ mu_max = [0.444,0.043,1.794,0.508,0.177,5];
 
 num_samples=50;
 num_start=1;
-%RB_path = '/cubric/scratch/c1616132/ROMEG_R123456_CUSTOM3';
 
 c = [1 2 3 4 5];
 c2 = [1 2 3];

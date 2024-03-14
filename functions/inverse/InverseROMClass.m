@@ -1,4 +1,4 @@
-classdef InverseROMClass < InverseClass
+classdef InverseROMClass < InverseClass & OrderedModelClass
 
     properties
         LF              % ROM model
@@ -13,19 +13,16 @@ classdef InverseROMClass < InverseClass
 
         function obj = InverseROMClass(varargin)
 
-            obj = obj.processArgs(varargin);
+            %obj = obj.processArgs(varargin);
+            obj@OrderedModelClass(varargin)
+            obj = obj.getTOP();
             obj = obj.loadSinks();
 
         end
 
         function obj = setUp(obj)
             
-%             if isempty(obj.use_sinks)
-%                 obj.el_in = obj.injection;
-%             else
-%                 obj.el_in = obj.sinks(obj.injection,1);
-%             end
-            obj.el_in = obj.sinks(obj.injection,1);
+            obj.el_in = obj.sinks(obj.pattern,1);
             obj = obj.loadLF();
             
             LF = obj.LF{obj.el_in};
@@ -85,7 +82,7 @@ classdef InverseROMClass < InverseClass
             end
         end
         
-        function zNh = RBsolution(obj,num,mu_a)
+        function zN = RBsolution(obj,num,mu_a)
             % returns the potential given by RB solution on the electrodes
             
             if isempty(obj.snap)
@@ -100,8 +97,6 @@ classdef InverseROMClass < InverseClass
             end
             
             zN=M_mu\obj.LF{num}.FNq{1}(1:obj.snap);
-            zNh = obj.LF{num}.V(:,1:obj.snap)*zN;
-            zNh = zNh(end-(obj.eL-1):end);
             
         end
        
@@ -110,25 +105,25 @@ classdef InverseROMClass < InverseClass
 	    zN = obj.RBsolution(num,mu_a);
 
 	    if isempty(obj.snap)
-		obj.snap = size(obj.LF{num}.V,2);
+            obj.snap = size(obj.LF{num}.V,2);
 	    end
 
 	    zNh = obj.LF{num}.V(:,1:obj.snap)*zN;
 	end
 
-        function zNh = combinedRBsolution(obj,mu_a,el_in,el_out)
-
+        function zNh = combinedRBsolution(obj,mu_a,el_in,el_out)            
+            
             if isempty(obj.use_sinks) && ~isempty(obj.new_sinks) && obj.new_sinks
-                zNh = obj.RBsolution(el_in,mu_a);
+                [zNh,~] = obj.RBapprox(el_in,mu_a);
                 for jj = el_out
-                    z_tmp = obj.RBsolution(jj,mu_a);
+                    [z_tmp,~] = obj.RBapprox(jj,mu_a);
                     zNh = zNh - z_tmp/length(el_out);
                 end
-		zNh = zNh(end-(obj.eL-1):end);
+                zNh = zNh(end-(obj.eL-1):end);
                 zNh([el_in el_out]) = [];
             else
-                zNh = obj.RBsolution(obj.injection,mu_a);
-		zNh = zNh(end-(obj.eL-1):end);
+                [zNh,~] = obj.RBapprox(el_in,mu_a);
+                zNh = zNh(end-(obj.eL-1):end);
                 zNh([el_in el_out]) = [];
             end
             
@@ -152,11 +147,11 @@ classdef InverseROMClass < InverseClass
         function f = functionEITSim(obj,cond_te)
 
             mu_a = obj.makeMu(cond_te);
-                f_tmp = zeros(obj.eL,1);
+            f_tmp = zeros(obj.eL,1);
             if ~isempty(obj.simultaneous) && obj.simultaneous
                 for ii = 1:size(obj.sinks,1)
-                    obj.injection = ii;
-                    el_in = obj.sinks(obj.injection,1); el_out = obj.sinks(obj.injection,2:end);
+                    obj.pattern = ii;
+                    el_in = obj.sinks(obj.pattern,1); el_out = obj.sinks(obj.pattern,2:end);
                     zNh1 = obj.combinedRBsolution(mu_a,el_in,el_out);
 
                     % Compute error between measurement and simulation
@@ -168,10 +163,10 @@ classdef InverseROMClass < InverseClass
                 end
                 f = mean(f_tmp,1);
             else
-                el_in = obj.sinks(obj.injection,1); el_out = obj.sinks(obj.injection,2:end);
+                el_in = obj.sinks(obj.pattern,1); el_out = obj.sinks(obj.pattern,2:end);
                 zNh1 = obj.combinedRBsolution(mu_a,el_in,el_out);
                 
-                u = obj.u{obj.injection}(end -(obj.eL-1):end);
+                u = obj.u{obj.pattern}(end -(obj.eL-1):end);
                 u([el_in el_out]) = [];
                 di=zNh1-u;
                 f=norm(di)/norm(zNh1);%sum(di.^2);
@@ -187,23 +182,28 @@ classdef InverseROMClass < InverseClass
                 obj.LF = {};
                 N_list = [];
                 sink_elec = RBModel.LF{1}.sink_elec;
-                for i=obj.sinks(obj.injection,:)
+                for i=obj.sinks(obj.pattern,:)
                     if ~(i==sink_elec)
-                        disp(['Loading LF for injection ' num2str(i)])
+                        disp(['Loading LF for pattern ' num2str(i)])
                         obj.LF{i} = RBModel.LF{i};
+                        obj.logger.debug('loadLF',['Loading ROM LF ' num2str(i) ' into obj.LF ' num2str(i)])
                         N_list = [N_list RBModel.LF{i}.N];
                     end
                 end
                 obj.eL = RBModel.LF{obj.el_in}.L;
                 obj.min_snap = min(N_list);
             elseif ~isempty(obj.simultaneous) && (obj.simultaneous == true)
-                obj.LF = RBModel.LF;
-                obj.eL = RBModel.LF{obj.injection}.L;
-                obj.min_snap = RBModel.LF{obj.injection}.N;
+                for i=1:size(obj.sinks,1)
+                    obj.LF{obj.sinks(i,1)} = RBModel.LF{i};
+                    obj.logger.debug('loadLF',['Loading ROM LF ' num2str(i) ' into obj.LF ' num2str(obj.sinks(i,1))])
+                end
+                    obj.eL = RBModel.LF{obj.pattern}.L;
+                    obj.min_snap = RBModel.LF{obj.pattern}.N;
             else
-                obj.LF{obj.el_in} = RBModel.LF{obj.injection};
-                obj.eL = RBModel.LF{obj.injection}.L;
-                obj.min_snap = RBModel.LF{obj.injection}.N;
+                obj.LF{obj.el_in} = RBModel.LF{obj.pattern};
+                obj.logger.debug('loadLF',['Loading ROM LF ' num2str(obj.pattern) ' into obj.LF ' num2str(obj.el_in)])
+                obj.eL = RBModel.LF{obj.pattern}.L;
+                obj.min_snap = RBModel.LF{obj.pattern}.N;
             end
         end
 
@@ -219,7 +219,7 @@ classdef InverseROMClass < InverseClass
             inv.estimate = obj.estimate;
             inv.synth_cond = obj.synth_cond;
             inv.cond_lf = obj.cond_lf;
-            save([obj.top '/Results/inverse/ROM/' folder '/inv_' num2str(obj.injection) '.mat'], 'inv')
+            save([obj.top '/Results/inverse/ROM/' folder '/inv_' num2str(obj.pattern) '.mat'], 'inv')
         end
 
         function savePrep(obj)
