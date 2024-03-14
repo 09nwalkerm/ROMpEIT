@@ -29,3 +29,6 @@ scripts/cmdofile.txt
 
 # sphinx build
 docs/_build/
+
+#bleigifp function
+external/bleigifp
