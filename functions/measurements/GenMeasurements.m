@@ -144,7 +144,7 @@ function GenMeasurements(varargin)
 
                 setenv("num",num2str(Data.num_patterns));
 
-                [status,cmdout] = system('sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.err --job-name SYNTH $ROMEG/Functions/Cluster/cluster_job.sh measurement');
+                [status,cmdout] = system('sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/SYNTH_%a_%j.err --job-name SYNTH $ROMEG/functions/cluster/cluster_job.sh measurement');
                 disp(cmdout)
 
                 OrderedModelClass.wait('SYNTH',20);

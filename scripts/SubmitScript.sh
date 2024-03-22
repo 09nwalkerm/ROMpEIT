@@ -11,7 +11,7 @@
 script=`echo $1 |awk '{split($1,a,"."); print a[1]; exit}'`
 
 /opt/MATLAB/R2021a/bin/matlab -nodisplay -nodesktop -nosplash -r \
-"addpath(genpath([getenv('ROMEG') '/Functions'])); \
+"addpath(genpath([getenv('ROMEG') '/functions'])); \
 addpath(genpath([getenv('ROMEG') '/scripts'])); \
 addpath(genpath([getenv('ROMEG') '/external'])); \
 $script; \

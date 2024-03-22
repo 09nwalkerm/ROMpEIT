@@ -126,9 +126,13 @@ function [FOM,RBModel] = GenRBModel(varargin)
         FOM.saveFOM();
     else
         disp('Using FOM.mat from Results/ folder')
+        OrderedModelClass.changePath('ROM')
+        top = getenv("ROMEG_TOP");
         load([top '/Results/ROM/FOM.mat'],'FOM')
         FOM = FOM.startLogger();
         FOM = FOM.checkPaths('type','ROM');
+        FOM = FOM.saveROMparams(paramsROM);
+        FOM.saveFOM();
     end
     
     %% Step 2: Making the Reduced Order Model
@@ -138,11 +142,11 @@ function [FOM,RBModel] = GenRBModel(varargin)
         OMC = OMC.checkPaths('type','ROM');
         OMC = OMC.loadSinks();
         setenv('SE',num2str(OMC.num_patterns));
-        OMC.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
-    elseif isfield(paramsROM_S,'use_sinks') && ~paramsROM_S.use_sinks
+        FOM.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
+    elseif isfield(paramsROM_S,'use_sinks') && paramsROM_S.use_sinks
         setenv('SE',num2str(FOM.L-1));
         OMC.num_patterns = FOM.L-1;
-        OMC.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
+        FOM.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
     end
     
     if isfield(paramsROM_S,'Cluster') && paramsROM_S.Cluster

@@ -67,7 +67,7 @@ function D = makeCondMatrix(p,t,f,estimates,theta)
     D2= VQ;
 
     obj = struct();
-    if size(estimates,2)==length(unique(t(:,5)))
+    if isempty(theta)
         obj.anis_tan = [];
         obj.anis_rad = [];
     else

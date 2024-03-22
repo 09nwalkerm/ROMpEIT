@@ -36,7 +36,7 @@ OrderedModelClass.patterns('model',model,'electrodes',[63,64,65])
 % that we can check the logs if something goes wrong.
 
 GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'nic',10,...
-    'Nmax',10,'current',0.02e-3,'debug',true)
+    'Nmax',20,'current',0.02e-3,'debug',true)
 
 %% Generate some noisey synthetic measurements
 % We need some sythetic measurements to test against. This uses the model
@@ -55,7 +55,7 @@ GenMeasurements('model',model,'noise',0.82e-6,'synth_cond',...
 
 GenInverse('model',model,'ROM',true,'current',0.02e-3,...
     'use_sinks',true,'use_noise',true,'debug',true,...
-    'active_layers',[1 2])
+    'active_layers',[1 2],'noise',0.82e-6)
 
 % Try adding the "'simultaneous',true" pair to the GenInverse function to
 % see all the electrode pairs be estimated together in one optimisation.

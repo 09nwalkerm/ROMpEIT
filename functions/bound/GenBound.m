@@ -52,9 +52,9 @@ function GenBound(varargin)
         
         if isfield(params_S,'complim')
             setenv("COMPLIM",num2str(params_S.complim))
-            !sbatch --array 1-$num%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/BOUND_%a_%j.out --job-name BOUND $ROMEG/Functions/Cluster/cluster_job.sh bound
+            !sbatch --array 1-$num%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/BOUND_%a_%j.out --job-name BOUND $ROMEG/functions/cluster/cluster_job.sh bound
         else
-            !sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/BOUND_%a_%j.out --job-name BOUND $ROMEG/Functions/Cluster/cluster_job.sh bound
+            !sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/BOUND_%a_%j.out --job-name BOUND $ROMEG/functions/cluster/cluster_job.sh bound
         end
         
         OrderedModelClass.wait('BOUND',20);
