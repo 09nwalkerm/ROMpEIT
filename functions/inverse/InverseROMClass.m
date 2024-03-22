@@ -185,7 +185,7 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                         %obj.weights([el_in el_out]) = [];
                         di = di.*obj.weights(ii,:)';
                     end
-                    f_tmp(ii,1)=norm(di);%/norm(zNh1);
+                    f_tmp(ii,1)=norm(di)/norm(zNh1);
                 end
                 f = mean(f_tmp,1);
             else
