@@ -1,4 +1,4 @@
-classdef BoundClass < InverseROMClass
+classdef BoundClass < OrderedModelClass & InverseROMClass 
     properties
        error_bound_Mean
        error_bound_Max
@@ -17,23 +17,25 @@ classdef BoundClass < InverseROMClass
         function obj = BoundClass(varargin)
         
            %obj = obj.processArgs(varargin);
+           obj@OrderedModelClass(varargin);
            obj@InverseROMClass(varargin);
+           
            
         end
         
         function obj = loadFullLF(obj)
-            fprintf(['Loading full LF for pattern ' num2str(obj.injection) '...'])
-            load([obj.top '/Results/ROM/other/LF_EIT_' num2str(obj.injection) '.mat'],'ROM')
-            obj.LF{obj.injection}.V = ROM.V;
-            obj.LF{obj.injection}.delta_Mean = ROM.delta_Mean;
-            obj.LF{obj.injection}.delta_Max = ROM.delta_Max;
-            fprintf('Done. \n')
+            obj.logger.info('makeBound',['Loading full LF for pattern ' num2str(obj.pattern) '...'])
+            load([obj.top '/Results/ROM/other/LF_EIT_' num2str(obj.pattern) '.mat'],'ROM')
+            obj.LF{obj.pattern}.V = ROM.V;
+            obj.LF{obj.pattern}.delta_Mean = ROM.delta_Mean;
+            obj.LF{obj.pattern}.delta_Max = ROM.delta_Max;
+            obj.logger.info('makeBound','Done.')
             clear ROM
         end
        
         function obj = makeBound(obj)
 
-            obj = obj.loadMeasurements(obj.injection);
+            obj = obj.loadMeasurements(obj.pattern);
            
             obj = obj.loadSinks();
            
@@ -41,31 +43,32 @@ classdef BoundClass < InverseROMClass
             
             obj = obj.loadFullLF(); 
             
-            obj.error_bound_Mean = real(obj.LF{obj.injection}.delta_Mean);
-            obj.error_bound_Max = obj.LF{obj.injection}.delta_Max;
+            obj.error_bound_Mean = real(obj.LF{obj.pattern}.delta_Mean);
+            obj.error_bound_Max = obj.LF{obj.pattern}.delta_Max;
             
             for i = 1:obj.min_snap
-                disp(['Finding solutions for ' num2str(i) ' snapshots...'])
+                obj.logger.debug('makeBound',['Finding solutions for ' num2str(i) ' snapshots...'])
                 t1 = tic;
                 obj.snap = i;
                 mu = obj.synth_cond(obj.te);
                 f = obj.RBerror(mu);
-                disp(['Time after EIT Function ' num2str(toc(t1))])
+                obj.logger.debug('makeBound',['Time after EIT Function ' num2str(toc(t1))])
                 obj.actual_error = [obj.actual_error f];                 
-                disp(['Relative Error between full and RB: ' num2str(f)])
+                obj.logger.debug('makeBound',['Relative Error between full and RB: ' num2str(f)])
             end
             
+            obj.logger.info('makeBound','Finished bound calculations, now cleaning and saving')
             obj = obj.cleanBound();
             
         end
         
         function f = RBerror(obj,cond_te)
             
-	    mu_a = onj.makeMu(cond_te);
+	    mu_a = obj.makeMu(cond_te);
 
-	    [zNh,zN] = obj.RBapprox(obj.injection,mu_a);
+	    [zNh,zN] = obj.RBapprox(obj.pattern,mu_a);
 
-	    f=norm(obj.u{obj.injection}-zNh)/norm(zN);
+	    f=norm(obj.u{obj.pattern}-zNh)/norm(zN);
         end
         
         
@@ -81,11 +84,11 @@ classdef BoundClass < InverseROMClass
         
         function obj = collectBound(obj)
             % load bound class files
-            for i=1:obj.num_samples
-                OrderedModelClass.changePath(['Result' num2str(i)])
+            for i=1:length(obj.sample_num)
+                OrderedModelClass.changePath(['Result' num2str(obj.sample_num(i))])
                 top = getenv("ROMEG_TOP");
                 for ii=1:obj.num_patterns
-                    disp(['Loading errors for pattern ' num2str(ii)])
+                    obj.logger.info('collectBound',['Loading errors for pattern ' num2str(ii)])
                     load([top '/Results/bound/bound_' num2str(ii) '.mat'],'bound')
                     if length(bound.error_bound_Mean) < obj.max_snap
                         obj.error_bound_Mean(ii,:) = NaN(1,obj.max_snap);
@@ -136,7 +139,8 @@ classdef BoundClass < InverseROMClass
             grid()
             %ylabel('RE')
             xlabel('Snapshots','FontSize',15)
-            legend('Avg bound','Max bound','Avg error','Max error','Interpreter','latex','FontSize',15)
+            %legend('Avg bound','Max bound','Avg error','Max error','Interpreter','latex','FontSize',15)
+            legend('AVG $\Delta_{RE}($\boldmath$\sigma)$','MAX $\Delta_{RE}($\boldmath$\sigma)$','AVG $RE($\boldmath$\sigma)$','MAX $RE($\boldmath$\sigma)$','Interpreter','latex','FontSize',15)
             
         end
     end

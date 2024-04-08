@@ -35,8 +35,8 @@ OrderedModelClass.patterns('model',model,'electrodes',[63,64,65])
 % points and Nmax is the number of snapshots. We'll set debug to true so
 % that we can check the logs if something goes wrong.
 
-GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'nic',10,...
-    'Nmax',20,'current',0.02e-3,'debug',true)
+GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'nic',2,...
+    'Nmax',10,'current',0.02e-3,'debug',true)
 
 %% Generate some noisey synthetic measurements
 % We need some sythetic measurements to test against. This uses the model

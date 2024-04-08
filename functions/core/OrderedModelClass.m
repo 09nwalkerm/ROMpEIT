@@ -149,7 +149,9 @@ classdef OrderedModelClass
                 catch ME
                     switch ME.identifier
                         case 'MATLAB:load:couldNotReadFile'
-                        obj.logger.error('processModel','Cannot load head model, please check path given')
+                            obj.logger.error('processModel',['path given:' obj.model])
+                            obj.logger.error('processModel','Cannot load head model, please check path given')
+                            error('Cannot load head model')
                         case 'MATLAB:UndefinedFunction'
                             obj.logger.error('processModel','At least one variable missing, please ensure the head model file contains p,t,f,theta variables.')
                             obj.logger.error('processModel','Or specify the name-value pair angles-false to have it generated.')

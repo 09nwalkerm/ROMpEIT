@@ -45,10 +45,13 @@ function GenBound(varargin)
         
         OMC = OrderedModelClass();
         OMC = OMC.checkPaths('type','bound','num',i);
-        OMC = OMC.startLogger('BOUND');
+%        OMC = OMC.startLogger('BOUND');
         OMC = OMC.loadSinks();
         setenv("num",num2str(OMC.num_patterns));
         setenv("MAX_SNAP",num2str(params_S.max_snap))
+        if isfield(params_S,'debug') && params_S.debug
+            setenv("DEBUG",num2str(params_S.debug))
+        end
         
         if isfield(params_S,'complim')
             setenv("COMPLIM",num2str(params_S.complim))
@@ -62,7 +65,7 @@ function GenBound(varargin)
     end
 
     OrderedModelClass.changePath('ROM'); top = getenv("ROMEG_TOP");
-    BC = BoundClass('top',top,'num_samples',samples(end),'max_snap',params_S.max_snap);
+    BC = BoundClass('top',top,'sample_num',samples,'max_snap',params_S.max_snap);
     BC = BC.collectBound();
     BC = BC.processBound();
     BC = BC.saveBound();

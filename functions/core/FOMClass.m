@@ -76,6 +76,7 @@ classdef FOMClass < OrderedModelClass
 
             obj.logger.info('saveFOM','Full Order Model built.')
         end
+        
         function obj = assembleFOM(obj)
 
             p = obj.p; t = obj.t; f= obj.f;

@@ -68,7 +68,7 @@ classdef SnapShotClass < PlottingClass
             if isempty(obj.num_samples) && isempty(obj.sample_num)
                 while isfolder([obj.top '/../' folder])
                     OrderedModelClass.changePath(folder); obj.top = getenv("ROMEG_TOP");
-                    load([obj.top '/Results/inverse/ROM/' folder2 '/estimate_snaps.mat'],'estimates')
+                    load([obj.top '/Results/inverse/ROM/' folder2 '/' obj.tag '_estimate_snaps.mat'],'estimates')
                     obj.results_ROM(:,:,count) = estimates;
                     load([obj.top '/Results/inverse/TRAD/' folder3 '/estimate.mat'],'estimates','histories')
                     obj.results_TRAD(:,:,count) = histories;
@@ -88,7 +88,7 @@ classdef SnapShotClass < PlottingClass
                 for i = 1:length(samples)
                     folder = ['Result' num2str(samples(i))];
                     OrderedModelClass.changePath(folder); obj.top = getenv("ROMEG_TOP");
-                    load([obj.top '/Results/inverse/ROM/' folder2 '/estimate_snaps.mat'],'estimates')
+                    load([obj.top '/Results/inverse/ROM/' folder2 '/' obj.tag '_estimate_snaps.mat'],'estimates')
                     obj.results_ROM(:,:,i) = estimates;
                     load([obj.top '/Results/inverse/TRAD/' folder3 '/estimate.mat'],'estimates','histories')
                     obj.results_TRAD(:,:,i) = histories;
@@ -116,7 +116,7 @@ classdef SnapShotClass < PlottingClass
             for i = 1:length(samples)
                 folder = ['Result' num2str(samples(i))];
                 OrderedModelClass.changePath(folder); obj.top = getenv("ROMEG_TOP");
-                load([obj.top '/Results/inverse/ROM/' folder2 '/estimate_snaps.mat'],'estimates')
+                load([obj.top '/Results/inverse/ROM/' folder2 '/' obj.tag '_estimate_snaps.mat'],'estimates')
                 obj.results_ROM(:,:,i) = estimates;
                 load([obj.top '/Results/measurements/prep.mat'],'Data')
                 layers = c;
@@ -356,10 +356,10 @@ classdef SnapShotClass < PlottingClass
         end
         
         function obj = saveSnap(obj)
-            disp('Saving processed Snapshot comparison data in ROM/Results/snap_data.mat')
+            disp(['Saving processed Snapshot comparison data in ROM/Results/' obj.tag '_snap_data.mat'])
             snap=obj;
             OrderedModelClass.changePath('ROM'); top = getenv("ROMEG_TOP");
-            save([top '/Results/snap_data.mat'],'snap')
+            save([top '/Results/' obj.tag '_snap_data.mat'],'snap')
         end
     end 
 end

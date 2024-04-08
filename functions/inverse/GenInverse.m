@@ -159,11 +159,12 @@ function [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD)
                 else
                     pause(3)
                 end
+                invROM{i}.logger.info('run',['Finished ROM inverse problem for sample ' num2str(i)])
             else
                 for ii=1:num_injections
                     invROM{i}.runInverse(ii);
                     invROM{i}.saveInv();
-                    invROM{i}.logger.info('GenInverse',['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
+                    invROM{i}.logger.info('run',['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
                 end
             end
             try
