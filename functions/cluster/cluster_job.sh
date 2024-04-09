@@ -3,7 +3,7 @@
 #SBATCH --no-requeue
 #SBACTH --begin=now
 #SBATCH --partition=cubric-rocky8
-#SBATCH --exclude=c4b[8,17],c5b[2-6,8-10,12-17],c6b6,c6b7
+#SBATCH --exclude=c4b[8,17],c5b[2-4,8-10,12-17]
 ###SBATCH --cpus-per-task 2
 ###SBATCH --ntasks-per-node=10
 

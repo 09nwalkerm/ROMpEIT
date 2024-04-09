@@ -11,6 +11,7 @@ classdef SnapShotClass < PlottingClass
         errors_ROM_max
         errors_TRAD_split_max
         errors_ROM_split_max
+        errors_ROM_split_std
         est_vals_avg = []
         est_vals_ROM_avg
         split_conds
@@ -148,12 +149,14 @@ classdef SnapShotClass < PlottingClass
             if isempty(obj.split_conds)
                 if isempty(obj.tissue)
                     obj.errors_ROM_split = mean(obj.ROM_RE,3,"omitnan");
+                    obj.errors_ROM_split_std = std(obj.ROM_RE,[],3,"omitnan");
                     obj.errors_ROM_split_max = max(obj.ROM_RE,[],3);
                     obj.errors_ROM = mean(obj.errors_ROM_split,2,"omitnan");
                     obj.errors_ROM_max = max(obj.errors_ROM_split_max,[],2);
                 else
                     obj.errors_ROM_split = mean(obj.ROM_RE,3,"omitnan");
                     obj.errors_ROM_split_max = max(obj.ROM_RE,[],3);
+                    obj.errors_ROM_split_std = std(obj.ROM_RE,[],3,"omitnan");
                     obj.errors_ROM = mean(obj.errors_ROM_split(:,obj.tissue),2,"omitnan");
                     obj.errors_ROM_max = max(obj.errors_ROM_split_max(:,obj.tissue),[],2);
                 end
@@ -318,6 +321,8 @@ classdef SnapShotClass < PlottingClass
                     for i = obj.tissue
                         semilogy(1:obj.range,obj.errors_ROM_split(:,i),icons{i},'color',colors{i},'DisplayName',obj.layer_names{i});
                         hold on
+                        %semilogy(1:obj.range,obj.errors_ROM_split_max(:,i),icons{i},'color','g','DisplayName','Max');
+                        %semilogy(1:obj.range,obj.errors_ROM_split(:,i)+obj.errors_ROM_split_std(:,i),icons{i},'color','g','DisplayName','std');
 %                         if obj.idx(i)
 %                             semilogy(1:obj.range,obj.errors_TRAD_split(:,i),'-o','color','k'); l3 = 'Traditional - AVG RE';
 %                         end

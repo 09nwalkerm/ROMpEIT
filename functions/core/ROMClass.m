@@ -6,7 +6,6 @@ classdef ROMClass < OrderedModelClass
         Qa
         Qf
         P
-        L
         active
         non_active
         mu_max

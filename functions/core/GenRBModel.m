@@ -41,6 +41,7 @@ function [FOM,RBModel] = GenRBModel(varargin)
 %                  new one.
 %   debug: (boolean) turn debug mode on
 %   Cluster: is there a compute cluster running SLURM accessible
+%   pre_stiff: are the stiffness matrices already in the model.mat file?
 %
 % Examples:
 %   
@@ -73,7 +74,7 @@ function [FOM,RBModel] = GenRBModel(varargin)
     ROMlist = [{'electrode'},{'current'},{'tolGREEDY'},{'Nmax'},{'debug'},{'top'},{'split'},{'use_sinks'},...
         {'Cluster'},{'complim'}];
     FOMlist = [{'model'},{'mu_min'},{'mu_max'},{'nic'},{'anis_tan'},{'anis_rad'},{'angles'},{'debug'},...
-        {'top'},{'complim'},{'use_FOM'},{'Cluster'}];
+        {'top'},{'complim'},{'use_FOM'},{'Cluster'},{'pre_stiff'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs

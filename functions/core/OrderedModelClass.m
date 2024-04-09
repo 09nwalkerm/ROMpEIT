@@ -31,6 +31,9 @@ classdef OrderedModelClass
         close          % see patterns function
         num_weights
         distance
+        pre_stiff      % are the stiff mats already in head_model file?
+        L
+        Aq
     end
     
     %properties (Access = protected)
@@ -131,6 +134,22 @@ classdef OrderedModelClass
 
             obj.logger.info('processModel','Loading Model...')
 
+            
+            if ~isempty(obj.pre_stiff) && obj.pre_stiff
+                try
+                    obj.logger.info('processModel','loading head model with stiffness matrices')
+                    load(obj.model,'p','t','L','Aq')
+                    obj.p = p; obj.t = t; obj.L = L; obj.Aq = Aq;%obj.Ind_E = Ind_E;
+                    obj.logger.info('processModel','p,t,L,Aq from head model loaded')
+                catch ME
+                    obj.logger.error('processModel',['path given:' obj.model])
+                    obj.logger.error('processModel','Cannot load head model, please check path given and that the file contains p,t,L,Aq values')
+                    %error('Cannot load head model')
+                    rethrow(ME)
+                end
+                return
+            end
+            
             if isempty(obj.angles) || (~obj.angles)%isempty(obj.anis_rad) || (~isempty(obj.anis_rad) && (~obj.angles)) %|| ~isfield(obj,'anis_rad')
                 try
                     load(obj.model,'p','t','f')
