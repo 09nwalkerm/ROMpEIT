@@ -11,6 +11,11 @@ classdef SnapShotClass < PlottingClass
         errors_ROM_max
         errors_TRAD_split_max
         errors_ROM_split_max
+        errors_ROM_split_std
+        COV_ROM_split_mean
+        COV_ROM_mean
+        COV_ROM_max
+        COV_ROM_split_max
         est_vals_avg = []
         est_vals_ROM_avg
         split_conds
@@ -22,6 +27,9 @@ classdef SnapShotClass < PlottingClass
         layer_names
         ROM
         lgd
+        COV
+        mean1
+        std1
     end
     
     methods
@@ -42,13 +50,20 @@ classdef SnapShotClass < PlottingClass
         %   tissue          - which tissue to plot
         %   layer_names     - names of tissue layers in cell array
         %   ROM             - Only load ROM values
+        %   COV             - plot the coefficient of variation for ROM
         %
         %
             obj = obj.processArgs(varargin);
             
+            if ~isempty(obj.COV) && obj.COV
+                obj.ROM = true;
+            end
+            
             if ~isempty(obj.ROM)
                 obj.split_layers = true;
             end
+            
+
         
         end
         
@@ -68,7 +83,7 @@ classdef SnapShotClass < PlottingClass
             if isempty(obj.num_samples) && isempty(obj.sample_num)
                 while isfolder([obj.top '/../' folder])
                     OrderedModelClass.changePath(folder); obj.top = getenv("ROMEG_TOP");
-                    load([obj.top '/Results/inverse/ROM/' folder2 '/estimate_snaps.mat'],'estimates')
+                    load([obj.top '/Results/inverse/ROM/' folder2 '/' obj.tag '_estimate_snaps.mat'],'estimates')
                     obj.results_ROM(:,:,count) = estimates;
                     load([obj.top '/Results/inverse/TRAD/' folder3 '/estimate.mat'],'estimates','histories')
                     obj.results_TRAD(:,:,count) = histories;
@@ -88,7 +103,7 @@ classdef SnapShotClass < PlottingClass
                 for i = 1:length(samples)
                     folder = ['Result' num2str(samples(i))];
                     OrderedModelClass.changePath(folder); obj.top = getenv("ROMEG_TOP");
-                    load([obj.top '/Results/inverse/ROM/' folder2 '/estimate_snaps.mat'],'estimates')
+                    load([obj.top '/Results/inverse/ROM/' folder2 '/' obj.tag '_estimate_snaps.mat'],'estimates')
                     obj.results_ROM(:,:,i) = estimates;
                     load([obj.top '/Results/inverse/TRAD/' folder3 '/estimate.mat'],'estimates','histories')
                     obj.results_TRAD(:,:,i) = histories;
@@ -116,12 +131,31 @@ classdef SnapShotClass < PlottingClass
             for i = 1:length(samples)
                 folder = ['Result' num2str(samples(i))];
                 OrderedModelClass.changePath(folder); obj.top = getenv("ROMEG_TOP");
-                load([obj.top '/Results/inverse/ROM/' folder2 '/estimate_snaps.mat'],'estimates')
+                load([obj.top '/Results/inverse/ROM/' folder2 '/' obj.tag '_estimate_snaps.mat'],'estimates')
                 obj.results_ROM(:,:,i) = estimates;
                 load([obj.top '/Results/measurements/prep.mat'],'Data')
                 layers = c;
                 obj.conds(:,:,i) = Data.synth_cond(layers);
             end
+        end
+        
+        function obj = processCOVResults(obj)
+            obj.num_samples = size(obj.results_ROM,3);
+            obj.num_patterns = size(obj.results_ROM,2);
+            for ii = 1:obj.num_samples
+                for jj = 1:obj.num_patterns
+                    est_vals_ROM = obj.results_ROM(:,jj,ii);
+                    est_vals_ROM = interp1(1:length(est_vals_ROM{1}),est_vals_ROM{1},1:obj.range);
+                    obj.est_vals_ROM_avg(:,:,jj) = est_vals_ROM;
+                end
+                obj.ROM_history(:,:,:,ii) = obj.est_vals_ROM_avg;%mean(obj.est_vals_ROM_avg,3,"omitnan");
+                %obj.ROM_RE(:,:,ii) = abs(obj.ROM_history(:,:,ii)-obj.conds(:,:,ii))./obj.conds(:,:,ii);
+                obj.mean1 = mean(obj.est_vals_ROM_avg,3,"omitnan");
+                obj.std1 = std(obj.est_vals_ROM_avg,[],3,"omitnan");
+                obj.COV_ROM_split_mean(:,:,ii) = obj.std1./obj.mean1;
+            end
+            obj.COV_ROM_mean(:,:) = mean(obj.COV_ROM_split_mean,3,"omitnan");
+            obj.COV_ROM_max(:,:) = max(obj.COV_ROM_split_mean,[],3,"omitnan");
         end
         
         function obj = processROMResults(obj)
@@ -148,12 +182,14 @@ classdef SnapShotClass < PlottingClass
             if isempty(obj.split_conds)
                 if isempty(obj.tissue)
                     obj.errors_ROM_split = mean(obj.ROM_RE,3,"omitnan");
+                    obj.errors_ROM_split_std = std(obj.ROM_RE,[],3,"omitnan");
                     obj.errors_ROM_split_max = max(obj.ROM_RE,[],3);
                     obj.errors_ROM = mean(obj.errors_ROM_split,2,"omitnan");
                     obj.errors_ROM_max = max(obj.errors_ROM_split_max,[],2);
                 else
                     obj.errors_ROM_split = mean(obj.ROM_RE,3,"omitnan");
                     obj.errors_ROM_split_max = max(obj.ROM_RE,[],3);
+                    obj.errors_ROM_split_std = std(obj.ROM_RE,[],3,"omitnan");
                     obj.errors_ROM = mean(obj.errors_ROM_split(:,obj.tissue),2,"omitnan");
                     obj.errors_ROM_max = max(obj.errors_ROM_split_max(:,obj.tissue),[],2);
                 end
@@ -292,6 +328,28 @@ classdef SnapShotClass < PlottingClass
             disp(['Removed ' num2str(obj.removed) ' electrode patterns respective to each sample.' ])
             
             figure()
+            
+            if ~isempty(obj.COV) && obj.COV
+                    icons = [{'-diamond'},{'-square'},{'-*'},{'-^'},{'-o'},{'-x'}];
+                    colors = [{"#0072BD"},{'r'},{'k'},{"#D95319"},{"#EDB120"},{"#7E2F8E"}];
+                    for i = obj.tissue
+                        semilogy(1:obj.range,obj.COV_ROM_mean(:,i),icons{i},'color',colors{i},'DisplayName',obj.layer_names{i});
+                        hold on
+                        %semilogy(1:obj.range,obj.COV_ROM_max(:,i),icons{i},'color','g','DisplayName',obj.layer_names{i});
+                    end
+                    ylabel('Coefficient of variation')
+                    xlabel('Number of snapshots/function counts per injection pattern')
+%                     if ~isempty(find(obj.idx,1))
+%                         legend(l1,l2,l3,l4);
+%                     else
+%                         legend(l1);
+%                     end
+                    legend('FontSize',15,'Location','best');
+                    grid();
+                    set(gca,'FontSize',15);
+                return
+            end
+            
             if isempty(obj.split_conds)
                 
                 if isempty(obj.split_layers)
@@ -318,6 +376,8 @@ classdef SnapShotClass < PlottingClass
                     for i = obj.tissue
                         semilogy(1:obj.range,obj.errors_ROM_split(:,i),icons{i},'color',colors{i},'DisplayName',obj.layer_names{i});
                         hold on
+                        %semilogy(1:obj.range,obj.errors_ROM_split_max(:,i),icons{i},'color','g','DisplayName','Max');
+                        %semilogy(1:obj.range,obj.errors_ROM_split(:,i)+obj.errors_ROM_split_std(:,i),icons{i},'color','g','DisplayName','std');
 %                         if obj.idx(i)
 %                             semilogy(1:obj.range,obj.errors_TRAD_split(:,i),'-o','color','k'); l3 = 'Traditional - AVG RE';
 %                         end
@@ -356,10 +416,10 @@ classdef SnapShotClass < PlottingClass
         end
         
         function obj = saveSnap(obj)
-            disp('Saving processed Snapshot comparison data in ROM/Results/snap_data.mat')
+            disp(['Saving processed Snapshot comparison data in ROM/Results/' obj.tag '_snap_data.mat'])
             snap=obj;
             OrderedModelClass.changePath('ROM'); top = getenv("ROMEG_TOP");
-            save([top '/Results/snap_data.mat'],'snap')
+            save([top '/Results/' obj.tag '_snap_data.mat'],'snap')
         end
     end 
 end

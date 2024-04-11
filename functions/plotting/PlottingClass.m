@@ -25,10 +25,11 @@ classdef PlottingClass < OrderedModelClass
         cmap = 'parula'
         estimates
         sources
+        tag
     end
     methods
 
-        function plotHeadModel(obj,varargin)
+        function obj = plotHeadModel(obj,varargin)
         % 
         %   plotHeadModel(name1,value1,name2,value2...)
         %
@@ -48,6 +49,7 @@ classdef PlottingClass < OrderedModelClass
         %                 out to indicate main folder
         %   elec_err    - plot the error of estimation on each electrode,
         %                 give layer number.
+        %   tag         - tag for estimates file
         %   tissue      - which tissue to display (a number)
         %   map_tissue  - tissue to interpolate onto skull
         %   amp_dense   - plot the current density - must come with fill
@@ -144,13 +146,16 @@ classdef PlottingClass < OrderedModelClass
             
             if ~isempty(obj.elec_err)
                 OrderedModelClass.changePath(['Result' num2str(obj.sample_num)]); obj.top = getenv("ROMEG_TOP");
+                load([obj.top '/Results/ROM/new_sinks.mat'],'sinks')
+                obj.sinks = sinks;
                 if ~isempty(obj.folder)
                     disp('Loading estimates and synthetic conductivities')
-                    load([obj.top '/Results/inverse/ROM/' obj.folder '/estimates.mat'],'estimates')
+                    load([obj.top '/Results/inverse/ROM/' obj.folder '/' obj.tag '_estimates.mat'],'estimates','sinks')
                     load([obj.top '/Results/measurements/prep.mat'],'Data')
-                    layers=find(logical(Data.mu_max-Data.mu_min));
+                    layers=obj.elec_err;%find(logical(Data.mu_max-Data.mu_min));
                     obj.conds = Data.synth_cond(layers);
-                    obj.ROM_RE = abs(estimates-obj.conds)./obj.conds;
+                    obj.sinks = sinks;
+                    obj.ROM_RE = abs(estimates(:,layers)-obj.conds)./obj.conds;
                     for ii=1:size(obj.ROM_RE,2)
                         obj.ROM_RE(:,ii) = normalize(obj.ROM_RE(:,ii),"range");
                     end
@@ -227,15 +232,15 @@ classdef PlottingClass < OrderedModelClass
                 for ii=array'
                     el_node_ind=f2(:,4) == ii;
                     el_node = f2(el_node_ind,1:3);
+                    if ~isempty(obj.elec_err) && ~(ii==array(end)) && ~isempty(find(~(obj.sinks(:,1) - ii)))
+                        color = [1 obj.ROM_RE(find(~(obj.sinks(:,1) - ii)),obj.elec_err) obj.ROM_RE(find(~(obj.sinks(:,1) - ii)),obj.elec_err)];
+                    else
+                        color='red';
+                    end
                     for kk=1:length(el_node(:,1))
                         verts = [p(el_node(kk,1),:); p(el_node(kk,2),:); p(el_node(kk,3),:)];
                         faces = [1 2 3];
-                        if ~isempty(obj.elec_err) && ~(ii==array(end))
-                            color = [1 obj.ROM_RE(ii,obj.elec_err) obj.ROM_RE(ii,obj.elec_err)];
-                            patch('Faces',faces,'Vertices',verts,'FaceColor',color,'EdgeColor','none')
-                        else
-                            patch('Faces',faces,'Vertices',verts,'FaceColor','red','EdgeColor','none')
-                        end
+                        patch('Faces',faces,'Vertices',verts,'FaceColor',color,'EdgeColor','none')
                     end
                     index = round(length(el_node(:,1))/2);
                     text_node = el_node(index,1);

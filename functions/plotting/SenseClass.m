@@ -9,7 +9,6 @@ classdef SenseClass < PlottingClass
         anis
         split_elec
         elec
-        tag
         c
     end
     

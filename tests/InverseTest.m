@@ -39,6 +39,7 @@ classdef InverseTest < matlab.unittest.TestCase
             INVTest.IROM.el_in = INVTest.IROM.pattern;
             INVTest.IROM.eL = INVTest.IROM.LF{1}.L;
             INVTest.IROM.synth_cond = Data.synth_cond;
+            INVTest.IROM.ground = 119;
         end
     end
     

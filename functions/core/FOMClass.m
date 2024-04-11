@@ -8,10 +8,8 @@ classdef FOMClass < OrderedModelClass
         Qf
         P
         Pp
-        L
         np
         nt
-        Aq
         ANq
         Fq
         FNq
@@ -67,8 +65,10 @@ classdef FOMClass < OrderedModelClass
             end
         
             obj = obj.assembleFOM();
-
-            obj = obj.computeStiff();
+            
+            if isempty(obj.pre_stiff) || ~obj.pre_stiff
+                obj = obj.computeStiff();
+            end
             
             obj = obj.computeXnorm();
 
@@ -76,13 +76,18 @@ classdef FOMClass < OrderedModelClass
 
             obj.logger.info('saveFOM','Full Order Model built.')
         end
+        
         function obj = assembleFOM(obj)
 
             p = obj.p; t = obj.t; f= obj.f;
 
             obj.np = length(p);
             obj.nt = length(t);
-            obj.L=length(unique(f(:,end)))-1;
+            
+            if isempty(obj.pre_stiff) || ~obj.pre_stiff
+                obj.L=length(unique(f(:,end)))-1;
+            end
+            
             obj.Pp=length(unique(t(:,5)));
 
             if isempty(obj.nic)

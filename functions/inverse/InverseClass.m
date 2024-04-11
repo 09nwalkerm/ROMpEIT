@@ -1,7 +1,8 @@
 classdef InverseClass < OrderedModelClass
 
     properties
-        estimate        % array of estimated conductivities   
+        estimate        % array of estimated conductivities
+        estimates       % 2D-array of estimates from all injection patterns
         te              % index for conductivities to estimate
         u               % measurements (artificial measurements)
         lf              % index for conductivities not to estimate
@@ -30,7 +31,9 @@ classdef InverseClass < OrderedModelClass
         complim
         use_noise       % use the measurements with noise
         noise           % for adding noise to the combined measurements
-
+        ref_sink        % the reference electrode used as a sink for all pairs.
+        iter
+        real
     end
 
     methods
@@ -38,14 +41,8 @@ classdef InverseClass < OrderedModelClass
         function runInverse(obj,pattern)
 
             obj.pattern = pattern;
-            
-            if ~isempty(obj.use_sinks) && obj.use_sinks
-                if ~isempty(obj.simultaneous) && obj.simultaneous
-                    obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
-                else
-                    obj = obj.loadMeasurements(obj.pattern);
-                end
-            elseif ~isempty(obj.new_sinks) && obj.new_sinks
+
+            if ~isempty(obj.new_sinks) && obj.new_sinks && isempty(obj.real)
                 if ~isempty(obj.simultaneous) && obj.simultaneous
                     sink_nums=unique(obj.sinks)';sink_nums=sink_nums(1:end);    
                     noise = obj.use_noise;
@@ -64,6 +61,14 @@ classdef InverseClass < OrderedModelClass
                     measurements=obj.u;obj.u=[];
                     obj = obj.combineMeasurements(obj.pattern,measurements);
                 end
+            elseif ~isempty(obj.real) && obj.real && obj.new_sinks %&& ~isempty(obj.simultaneous)
+                obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
+            else
+                if ~isempty(obj.simultaneous) && obj.simultaneous
+                    obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
+                else
+                    obj = obj.loadMeasurements(obj.pattern);
+                end    
             end
             
             obj = obj.setUp();
@@ -84,17 +89,27 @@ classdef InverseClass < OrderedModelClass
             
             try
                 if ~isempty(obj.use_noise) && obj.use_noise
-                    load([path '/pattern_' num2str(num) '_noise.mat'],'Data')
+                    load([path '/pattern_' num2str(num) '_noise.mat'])
                     obj.logger.debug('loadMeasurements',['Loading noisey synthetic pattern ' num2str(num) ' solution...'])
                 else
-                    load([path '/pattern_' num2str(num) '.mat'],'Data')
+                    load([path '/pattern_' num2str(num) '.mat'])
                     obj.logger.debug('loadMeasurements',['Loading synthetic pattern ' num2str(num) ' solution...'])
                 end
-                obj.u{num} = Data.u;
-                obj.synth_cond = Data.synth_cond;
+                
+                if isempty(obj.real) || ~obj.real
+                    obj.synth_cond = Data.synth_cond;
+                    obj.u{num} = Data.u;
+                else
+                    obj.u{num} = u;
+                end
             catch
-                obj.logger.error('loadMeasurements',['Measurements not found for pattern ' num2str(num)])
-                error('Measurement data missing, please either supply real data or generate synthetic data using GenMeasurements.')
+                if num==obj.ref_sink
+                    obj.logger.debug('loadMeasurements',['Measurements for reference electrode ' num2str(obj.ref_sink) ' do not exist'])
+                    return
+                else
+                    obj.logger.error('loadMeasurements',['Measurements not found for pattern ' num2str(num)])
+                    error('Measurement data missing, please either supply real data or generate synthetic data using GenMeasurements.')
+                end
             end
         end
         
@@ -103,10 +118,18 @@ classdef InverseClass < OrderedModelClass
             el_out = obj.sinks(num,2:end);
             el_in = obj.sinks(num,1);
             u_comb = measurements{el_in};
+            obj.logger.debug('combineMeasurements',['Starting measurement combo with ' num2str(el_in)])
+            obj.logger.debug('combineMeasurements',['Starting measurements have electrode values ' num2str(u_comb(end-132:end-122)') '...' num2str(u_comb(end)')])
 
             for ii=el_out
-                u_comb = u_comb - measurements{ii}/length(el_out);
+                if ~(ii == obj.ref_sink)
+                    u_comb = u_comb - measurements{ii}/length(el_out);
+                    obj.logger.debug('combineMeasurements',['Linearly combining measurement ' num2str(ii)])
+                else
+                    obj.logger.debug('combineMeasurements',['Skipping ref electrode ' num2str(ii)])
+                end
             end
+            obj.logger.debug('combineMeasurements',['Combined measurements have values ' num2str(u_comb(end-132:end-122)') '...' num2str(u_comb(end)')])
             
             obj.u{num} = u_comb;
             
@@ -114,7 +137,7 @@ classdef InverseClass < OrderedModelClass
                 obj = obj.addNoise(num);
             end
             
-            disp(['Combined measurements for pattern ' num2str(num)])
+            obj.logger.info('combineMeasurements',['Combined measurements for pattern ' num2str(num)])
         end
         
         function obj = loadMultiMeasurements(obj,num)

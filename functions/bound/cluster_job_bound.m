@@ -4,10 +4,16 @@ function cluster_job_bound()
     top = getenv("ROMEG_TOP");
     fprintf('\n ************************* COEFFICIENT NUMBER  %d \n', coef_n);
     max_snap = str2double(getenv("MAX_SNAP"));
-    bound = BoundClass('injection',coef_n,'top',top,'max_snap',max_snap);
+    debug = getenv('DEBUG');
+    if strcmp(debug,'true')
+        debug = true;
+    else
+        debug = false;
+    end
     setenv("ROMEG_LOGS",[top '/Results/logs'])
-    bound=bound.startLogger(['BOUND_' num2str(coef_n)]);
+    bound = BoundClass('pattern',coef_n,'top',top,'max_snap',max_snap,'log_tag',['BOUND_' num2str(coef_n)],'debug',debug);
+    bound.logger.info('cluster_job_bound','Set up BoundClass, now running')
     bound = bound.makeBound();
     save([top '/Results/bound/bound_' num2str(coef_n) '.mat'],'bound')
-    
+    %bound.logger.info('cluster_job_bound',['Saved result to ' top '/Results/bound/bound_' num2str(coef_n) '.mat'])
 end

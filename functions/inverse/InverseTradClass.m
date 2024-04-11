@@ -180,7 +180,7 @@ classdef InverseTradClass < InverseClass
             save([obj.top '/Results/inverse/TRAD/prep.mat'],'inv')
         end
         
-        function collect(obj)
+        function obj = collect(obj)
             
             folder = 'inverse_';
             for ii = 1:length(obj.active_layers)

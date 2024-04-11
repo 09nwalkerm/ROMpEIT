@@ -29,19 +29,21 @@ classdef MeasurementClass < OrderedModelClass
             obj.el_in = obj.sinks(injection,1);
 
             p = obj.p; t = obj.t; f= obj.f;
+            obj.logger.debug('genData',['size of t ' num2str(size(t))])
             
             if ~isempty(obj.anis_tan)
                 theta = obj.theta;
                 % Construct change of basis matrix, 2=theta, 1=psi
                 tissue = min([obj.anis_tan,obj.anis_rad]); % only support for one anisotropic layer at a time
+                obj.logger.info('genData',['tissue for anisotropy ' num2str(tissue)])
 %                 tissue = [];
 %                 for ii = 1:length(obj.anis_tan)
 %                     tissue_tmp = obj.anis_tan(ii)-(ii-1);
 %                     tissue = [tissue tissue_tmp];
 %                 end
-                t2 = t(t(:,5)==tissue);
+                t2 = t(t(:,5)==tissue,:);
                 oo = zeros(length(t2(:,1)),1);
-                disp('Constructing CBM matrix for anisotropic layers')
+                obj.logger.info('genData','Constructing CBM matrix for anisotropic layers')
                 obj.CBM = [cos(theta(:,1)).*cos(theta(:,2)) sin(theta(:,1)).*cos(theta(:,2)) -sin(theta(:,2)) -sin(theta(:,1)) cos(theta(:,1)) oo cos(theta(:,1)).*sin(theta(:,2)) sin(theta(:,1)).*sin(theta(:,2)) cos(theta(:,2))];
             end
             
@@ -51,10 +53,11 @@ classdef MeasurementClass < OrderedModelClass
             for i=1:layers
                 if isempty(obj.anis_tan)
                     if isempty(t(t(:,5)==i))
+                        obj.logger.error('genData','Number of conductivities given and layers in model does not match. Please adjust.')
                         error('Number of conductivities given and layers in model does not match. Please adjust.')
                     end
                     Ind = (t(:,5)==i);D(Ind,[1,4,6])=obj.synth_cond(i);
-                    disp(['Calculating stiffness matrix for layer ' num2str(i)])
+                    obj.logger.info('genData',['Calculating stiffness matrix for layer ' num2str(i)])
                 else
                     is_anit = obj.anis_tan(obj.anis_tan==i);
                     is_anir = obj.anis_rad(obj.anis_rad==i);
@@ -68,16 +71,16 @@ classdef MeasurementClass < OrderedModelClass
                         end
                     end
                     if (isempty(is_anit)) && (isempty(is_anir))
-                        disp('Calculating values for isotropic layer')
+                        obj.logger.info('genData','Calculating values for isotropic layer')
                         D(t(:,5)==tt,[1,4,6])=obj.synth_cond(i);
                     elseif isempty(is_anit)
-                        disp('Calculating radial values for stiffness')
+                        obj.logger.info('genData','Calculating radial values for stiffness')
                         D_tmp = zeros(size(t,1),6);
                         D_tmp(t(:,5)==tt,6)=obj.synth_cond(i);
                         D_tmp(t(:,5)==tt,:) = change_basis(D_tmp(t(:,5)==tt,:),obj.CBM,"rad");
                         D = D + D_tmp;
                     else
-                        disp('Calculating tangential values for stiffness')
+                        obj.logger.info('genData','Calculating tangential values for stiffness')
                         D_tmp = zeros(size(t,1),6);
                         D_tmp(t(:,5)==tt,[1,4])=obj.synth_cond(i);
                         D_tmp(t(:,5)==tt,:) = change_basis(D_tmp(t(:,5)==tt,:),obj.CBM,"tan");
@@ -164,7 +167,7 @@ classdef MeasurementClass < OrderedModelClass
         end
         
         function obj = loadLF(obj)
-            disp('Loading RBModel from Results folder')
+            obj.logger.info('loadLF','Loading RBModel from Results folder')
             load([obj.top '/Results/ROM/RBModel.mat'],'RBModel')
             if ~RBModel.LF{1}.use_sinks
                 obj.LF = {};
@@ -182,6 +185,7 @@ classdef MeasurementClass < OrderedModelClass
         function savePrep(obj)
             Data = obj;
             save([obj.top '/Results/measurements/prep.mat'], 'Data')
+            obj.logger.debug('savePrep',['Prep.mat saved: ' obj.top '/Results/measurements/prep.mat'])
         end
 
         function saveData(obj,num)

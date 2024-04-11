@@ -6,7 +6,6 @@ classdef ROMClass < OrderedModelClass
         Qa
         Qf
         P
-        L
         active
         non_active
         mu_max
@@ -65,11 +64,11 @@ classdef ROMClass < OrderedModelClass
             obj = obj.getTOP();
             if isempty(obj.FOM)
                 obj.FOM = FOMClass.loadFOM(obj.top);
-                obj.logger.debug('ROMClass','Loading FOM into ROMClass')
+                obj.logger.info('ROMClass','Loading FOM into ROMClass')
             end
             obj = obj.processArgs(obj.FOM.paramsROM);
-            obj.logger.debug('ROMClass','Loading the paramsROM arguments from FOM.mat into ROMClass. Some args over-written.')
-            %obj = obj.startLogger();
+            obj.logger.info('ROMClass','Loading the paramsROM arguments from FOM.mat into ROMClass. Some args over-written.')
+            obj = obj.startLogger();
         end
 
         function obj = buildROM(obj)
@@ -170,7 +169,17 @@ classdef ROMClass < OrderedModelClass
                 obj.logger.debug('runGreedy',['Conductivities being used for this snapshot are ' num2str(mu_a)])
                 sample_grid(new_mu_indx,:)=[];
                 [M_mu,b_mu]=FOM.muAssemble(mu_a);[L_p,U_p]=ilu(M_mu);
-                [zh,flag_re]=pcg(M_mu,b_mu,1e-10,6000,L_p,U_p);
+                % building initial guess for pcg using reduced model
+                if obj.N == 1
+                    x0 = zeros(size(b_mu,1),1);
+                else
+                    [M_mu_N,b_mu_N]=obj.muAssemble(mu_a);
+                    zN=M_mu_N\b_mu_N;
+                    x0 = obj.V*zN;
+                    obj.logger.debug('runGreedy','Building initial guess for pcg')
+                end
+                
+                [zh,flag_re]=pcg(M_mu,b_mu,1e-10,6000,L_p,U_p,x0);
                 obj.logger.debug('runGreedy',['PCG Flag: ' num2str(flag_re)])
 
                 obj.logger.debug('runGreedy',['The time after full order calc is ' num2str(toc)])
@@ -229,7 +238,7 @@ classdef ROMClass < OrderedModelClass
                     obj.delta{obj.N} = delta_N;
                     obj.sample_grid{obj.N} = sample_grid';
                 end
-                obj.logger.debug('runGreedy',['Full Greedy Iteration calculated in ' num2str(toc) ' seconds'])
+                obj.logger.info('runGreedy',['Full Greedy Iteration calculated in ' num2str(toc) ' seconds'])
             end
         end
 

@@ -41,6 +41,13 @@ function GenInverse(varargin)
 %   noise: what noise is used in the measurements
 %   tag: (string) how to label the estimates
 %   debug: (boolean) turn debug mode on
+%   weighted: use weights on the measurements
+%   ref_sink: used when ROM is trained with a common sink (advised), and
+%       then new sinks are used in the inverse problem
+%   omit_layers: when using synthetic measurements with different number of
+%       layers. Specify the layer(s) not trained in ROM model.
+%   ground: the reference/ground electrode
+%   real: are the measurements real (i.e. are the synthetic conds missing)?
 %
 
     params = [];
@@ -49,7 +56,9 @@ function GenInverse(varargin)
         {'x0'},{'data_path'},{'model'},{'sinks'},{'sinks_path'},{'top'}, ...
         {'current'},{'num_samples'},{'snaps'},{'fix_conds'}, ...
         {'active_layers'},{'sensitivity'},{'use_sinks'},{'new_sinks'}, ...
-        {'complim'},{'use_noise'},{'sample_num'},{'noise'},{'tag'},{'debug'}];
+        {'complim'},{'use_noise'},{'sample_num'},{'noise'},{'tag'},...
+        {'debug'},{'ref_sink'},{'weighted'},{'omit_layers'},{'iter'},...
+        {'ground'},{'real'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs
@@ -80,72 +89,180 @@ function GenInverse(varargin)
     if ~isfield(params_S,'active_layers')
         error('Please specify active layers as an array ')
     end
+    
+    [invROM,invTRAD] = prep(params_S,params,samples);
+    [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD);
+    
+    if isfield(params_S,'iter')
+        for i=samples
+            k = dbscan(invROM{i}.estimates(:,1),0.0005,2);
+            invROM{i}.sinks(k~=1,:) = [];
+            invROM{i}.logger.info('GenInverse',['Cut sample ' num2str(i) ' patterns file down to ' num2str(size(invROM{i}.sinks,1)) ' patterns'])
+            invROM{i}.num_patterns = size(invROM{i}.sinks,1);
+            invROM{i}.weights(k~=1,:) = [];
+            invROM{i}.simultaneous = true;
+            invROM{i}.savePrep();
+        end
+        params_S.simultaneous = true;
+        [~,~] = run(params_S,samples,invROM,invTRAD);
+    end
+end
 
+function [invROM,invTRAD] = prep(params_S,params,samples)
+    invROM = [];
+    invTRAD = [];
     for i = samples
         if isfield(params_S,'ROM') && params_S.ROM
             
             OrderedModelClass.sensitivityFiles('layers',params_S.active_layers,'sample_num',i,'order','ROM')
             
-            invROM = InverseROMClass(params);
-            invROM = invROM.checkPaths('type','inverse','num',i);
-            invROM.savePrep();
+            inv = InverseROMClass(params);
+            inv = inv.checkPaths('type','inverse','num',i);
+            inv.savePrep();
+            invROM{i} = inv;
+        end
+        
+        if isfield(params_S,'TRAD') && params_S.TRAD
+            
+            OrderedModelClass.sensitivityFiles('layers',params_S.active_layers,'sample_num',i,'order','TRAD')
+    
+            inv = InverseTradClass(params);
+            inv = inv.checkPaths('type','inverse','num',i);
+            inv.savePrep();
+            invTRAD{i} = inv;
+        end
+    end
+end
+
+function [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD)
+    for i = samples
+        setenv("ROMEG_TOP",invROM{i}.top)
+        if isfield(params_S,'ROM') && params_S.ROM
             
             if isfield(params_S,'simultaneous') && params_S.simultaneous
                 setenv("num",num2str(1));
                 num_injections = 1;
             else
-                setenv("num",num2str(invROM.num_patterns));
-                num_injections=invROM.num_patterns;
+                setenv("num",num2str(invROM{i}.num_patterns));
+                num_injections = invROM{i}.num_patterns;
+                invROM{i}.logger.info('run',['setting num_injections to ' num2str(num_injections)])
             end
-    
+            
             if isfield(params_S,'Cluster') && params_S.Cluster
                 
                 if isfield(params_S,'complim')
                     setenv("COMPLIM",num2str(params_S.complim))
-                    !sbatch --array 1-$num%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.err --job-name INVROM $ROMEG/Functions/Cluster/cluster_job.sh inv_ROM
+                    !sbatch --array 1-$num%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.err --job-name INVROM $ROMEG/functions/cluster/cluster_job.sh inv_ROM
                 else
-                    !sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.err --job-name INVROM $ROMEG/Functions/Cluster/cluster_job.sh inv_ROM
+                    !sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.err --job-name INVROM $ROMEG/functions/cluster/cluster_job.sh inv_ROM
                 end
                 
-                OrderedModelClass.wait('INVROM',20);
+                if ~isfield(params_S,'simultaneous')
+                    OrderedModelClass.wait('INVROM',20);
+                else
+                    pause(3)
+                end
+                invROM{i}.logger.info('run',['Finished ROM inverse problem for sample ' num2str(i)])
             else
                 for ii=1:num_injections
-                    invROM.runInverse(ii);
-                    invROM.saveInv();
-                    disp(['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
+                    invROM{i}.runInverse(ii);
+                    invROM{i}.saveInv();
+                    invROM{i}.logger.info('run',['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
                 end
             end
-            invROM.collect();
+            try
+                if ~isfield(params_S,'simultaneous')
+                    invROM{i} = invROM{i}.collect();
+                end
+            catch ME
+                invROM{i}.logger.error('GenInverse','Collection of estimates failed')
+                rethrow(ME)
+            end
         end
     
         if isfield(params_S,'TRAD') && params_S.TRAD
-            
-            OrderedModelClass.sensitivityFiles('layers',params_S.active_layers,'sample_num',i,'order','TRAD')
-    
-            invTRAD = InverseTradClass(params);
-            invTRAD = invTRAD.startLogger('invTRAD');
-            invTRAD = invTRAD.checkPaths('type','inverse','num',i);
-            invTRAD.savePrep();
-            setenv("num",num2str(invTRAD.num_patterns));
-        
             if isfield(params_S,'Cluster') && params_S.Cluster
-
+                
+                setenv("num",num2str(invTRAD.num_patterns));
                 if isfield(params_S,'complim')
                     setenv("COMPLIM",num2str(params_S.complim))
-                    !sbatch --array 1-$num%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/INVTRAD_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.err --job-name INVTRAD $ROMEG/Functions/Cluster/cluster_job.sh inv_TRAD
+                    !sbatch --array 1-$num%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/INVTRAD_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVROM_%a_%j.err --job-name INVTRAD $ROMEG/functions/cluster/cluster_job.sh inv_TRAD
                 else
-                    !sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/INVTRAD_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVTRAD_%a_%j.err --job-name INVTRAD $ROMEG/Functions/Cluster/cluster_job.sh inv_TRAD
+                    !sbatch --array 1-$num -o $ROMEG_TOP/Results/slurm_logs/INVTRAD_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/INVTRAD_%a_%j.err --job-name INVTRAD $ROMEG/functions/cluster/cluster_job.sh inv_TRAD
                 end
 
                 OrderedModelClass.wait('INVTRAD',30);
             else
-                for ii=1:invTRAD.num_patterns
-                    invTRAD.runInverse(ii);
-                    invTRAD.saveInv();
+                for ii=1:invTRAD{i}.num_patterns
+                    invTRAD{i}.runInverse(ii);
+                    invTRAD{i}.saveInv();
                     disp(['Finished TRAD pattern ' num2str(ii) ' for sample ' num2str(i)])
                 end
             end
-            invTRAD.collect();
+            try
+                invTRAD{i} = invTRAD{i}.collect();
+            catch ME
+                invTRAD{i}.logger.error('GenInverse','Collection of estimates failed')
+                rethrow(ME)
+            end
+        end
+    end
+    
+    if isfield(params_S,'simultaneous') && params_S.simultaneous
+        OrderedModelClass.wait('INVROM',20);
+        for s=samples
+            invROM{s} = invROM{s}.collect();
         end
     end
 end
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

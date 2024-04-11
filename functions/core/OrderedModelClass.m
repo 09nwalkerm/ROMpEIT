@@ -28,6 +28,12 @@ classdef OrderedModelClass
         Cluster         % is ROM being run on the cluster
         log_tag
         logger
+        close          % see patterns function
+        num_weights
+        distance
+        pre_stiff      % are the stiff mats already in head_model file?
+        L
+        Aq
     end
     
     %properties (Access = protected)
@@ -111,14 +117,11 @@ classdef OrderedModelClass
 
         function obj = processArgs(obj,args)
             
+            while length(args)==1 && isa(args,'cell')
+                args = args{1};
+            end
+            
             if ~isempty(args)
-                
-                while isa(args{1},'cell')
-                    if isa(args{1},'cell')
-                        args = args{1};
-                    end
-                end
-
                 for i = 1:2:length(args) % work for a list of name-value pairs
                     if ischar(args{i}) % check if is character
                         obj.(args{i}) = args{i+1}; % override or add parameters to structure.
@@ -131,6 +134,22 @@ classdef OrderedModelClass
 
             obj.logger.info('processModel','Loading Model...')
 
+            
+            if ~isempty(obj.pre_stiff) && obj.pre_stiff
+                try
+                    obj.logger.info('processModel','loading head model with stiffness matrices')
+                    load(obj.model,'p','t','L','Aq')
+                    obj.p = p; obj.t = t; obj.L = L; obj.Aq = Aq;%obj.Ind_E = Ind_E;
+                    obj.logger.info('processModel','p,t,L,Aq from head model loaded')
+                catch ME
+                    obj.logger.error('processModel',['path given:' obj.model])
+                    obj.logger.error('processModel','Cannot load head model, please check path given and that the file contains p,t,L,Aq values')
+                    %error('Cannot load head model')
+                    rethrow(ME)
+                end
+                return
+            end
+            
             if isempty(obj.angles) || (~obj.angles)%isempty(obj.anis_rad) || (~isempty(obj.anis_rad) && (~obj.angles)) %|| ~isfield(obj,'anis_rad')
                 try
                     load(obj.model,'p','t','f')
@@ -149,7 +168,9 @@ classdef OrderedModelClass
                 catch ME
                     switch ME.identifier
                         case 'MATLAB:load:couldNotReadFile'
-                        obj.logger.error('processModel','Cannot load head model, please check path given')
+                            obj.logger.error('processModel',['path given:' obj.model])
+                            obj.logger.error('processModel','Cannot load head model, please check path given')
+                            error('Cannot load head model')
                         case 'MATLAB:UndefinedFunction'
                             obj.logger.error('processModel','At least one variable missing, please ensure the head model file contains p,t,f,theta variables.')
                             obj.logger.error('processModel','Or specify the name-value pair angles-false to have it generated.')
@@ -300,18 +321,20 @@ classdef OrderedModelClass
         %       For opposite extraction electrodes use the num_sinks option.
         % 
         %   Arguments:
-        %       model       - (essential) path to the head model
-        %       num_sinks   - how many current sinks for each
+        %       model: (essential) path to the head model
+        %       num_sinks: how many current sinks for each
         %                     injection would you like.
-        %       elec_height - (optional) a given minimum height the sink
+        %       elec_height: (optional) a given minimum height the sink
         %                     electrodes should be on the head model.
-        %       electrodes  - list of electrodes for injection (defaults to
+        %       electrodes: list of electrodes for injection (defaults to
         %                     all)
-        %       top         - (optional if ROMEG_TOP env var has been set)
+        %       top: (optional if ROMEG_TOP env var has been set)
         %                     path to the top of the ROMEG tree
-        %       out         - specific list of extraction electrodes for
+        %       out: specific list of extraction electrodes for
         %                     injection patterns.
-        %       new_sinks   - are these new sinks being made for inverse
+        %       new_sinks: are these new sinks being made for inverse
+        %       close: select the closest electrodes. Default is furthest
+        %                     away
         %
         %   Examples:
         %       
@@ -354,7 +377,7 @@ classdef OrderedModelClass
                     elec_sinks = elec_centers;
                     lengths = zeros(size(elec_sinks,1),3);
 
-                    for jj = 1:size(elec_sinks,1)-1
+                    for jj = 1:size(elec_sinks,1)
                         lengths(jj,:) = elec_sinks(jj,:) - pos(:,:);
                         if ~isempty(obj.elec_height)
                             if (elec_sinks(jj,3) < obj.elec_height), lengths(jj,:) = []; end
@@ -362,8 +385,13 @@ classdef OrderedModelClass
                     end
 
                     norms = vecnorm(lengths');
-
-                    [~,ind] = maxk(norms,obj.num_sinks);
+                    
+                    if ~isempty(obj.close) && obj.close
+                        [~,ind] = mink(norms,obj.num_sinks+1);
+                        ind = ind(2:end);
+                    else
+                        [~,ind] = maxk(norms,obj.num_sinks);
+                    end
 
                     sinks(ii,2:obj.num_sinks+1) = ind;
                 end
@@ -385,6 +413,74 @@ classdef OrderedModelClass
             end
                 
             obj.logger.info('patterns','Saved sink patterns to /Results/ROM folder')
+        end
+        
+        function weights = makeWeights(varargin)
+        %
+        %   OrderedModelClass.makeWeights(name1,value1,name2,value2...)
+        %
+        %   Description:
+        %       A script to make the weights for the measurements on each
+        %       eelctrode for each injection pattern in the inverse
+        %       problem.
+        % 
+        %   Arguments:
+        %       model: (essential) path to the head model
+        %       num_weights: how many current sinks for each
+        %                     injection would you like.
+        %       distance: should the weights be a function of distance from
+        %                 the injection electrode.
+        %       sinks: matrix containing all the injection patterns
+            
+            obj = OrderedModelClass(varargin);
+            %obj = obj.checkPaths('type','ROM');
+            obj = obj.processModel();
+            f = obj.f; p = obj.p;
+            
+            %load([obj.top '/Results/ROM/new_sinks.mat'],'sinks')
+            
+            elec_centers = zeros(length(unique(f(:,4)))-1,3);
+            
+            for ii = 1:length(elec_centers)
+                nodes = f(f(:,4)==ii,1:3);
+                nodes = unique(nodes);
+                elec_centers(ii,:) = [mean(p(nodes,1)) mean(p(nodes,2)) mean(p(nodes,3))];
+            end
+
+            weights = zeros(size(obj.sinks,1),length(unique(f(:,4)))-1-size(obj.sinks,2));
+            
+            for ii = 1:size(obj.sinks,1)
+                weight = zeros(1,length(unique(f(:,4)))-1);
+                pos = elec_centers(obj.sinks(ii,1),:);
+
+                elec_sinks = elec_centers;
+                lengths = zeros(size(elec_sinks,1),3);
+
+                for jj = 1:size(elec_sinks,1)
+                    lengths(jj,:) = elec_sinks(jj,:) - pos(:,:);
+                    if ~isempty(obj.elec_height)
+                        if (elec_sinks(jj,3) < obj.elec_height), lengths(jj,:) = []; end
+                    end
+                end
+
+                norms = vecnorm(lengths');
+
+                if ~isempty(obj.num_weights)
+                    norms(obj.sinks(ii,1)) = NaN;
+                    norms(obj.sinks(ii,2:end)) = NaN;
+                    [~,ind] = mink(norms,obj.num_weights);
+                    weight(ind) = 1;
+                end
+                
+                if ~isempty(obj.distance) && obj.distance
+                    max_distance = max(norms);
+                    weights(ii,:) = max_distance-norms;
+                end
+                
+                weight = normalize(weight,"norm",1);
+                weight(obj.sinks(ii,:)) = [];
+                weights(ii,:) = weight;
+            end
         end
         
         function wait(NAME,PAUSE,varargin)

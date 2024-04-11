@@ -41,6 +41,7 @@ function [FOM,RBModel] = GenRBModel(varargin)
 %                  new one.
 %   debug: (boolean) turn debug mode on
 %   Cluster: is there a compute cluster running SLURM accessible
+%   pre_stiff: are the stiffness matrices already in the model.mat file?
 %
 % Examples:
 %   
@@ -73,7 +74,7 @@ function [FOM,RBModel] = GenRBModel(varargin)
     ROMlist = [{'electrode'},{'current'},{'tolGREEDY'},{'Nmax'},{'debug'},{'top'},{'split'},{'use_sinks'},...
         {'Cluster'},{'complim'}];
     FOMlist = [{'model'},{'mu_min'},{'mu_max'},{'nic'},{'anis_tan'},{'anis_rad'},{'angles'},{'debug'},...
-        {'top'},{'complim'},{'use_FOM'},{'Cluster'}];
+        {'top'},{'complim'},{'use_FOM'},{'Cluster'},{'pre_stiff'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs
@@ -126,9 +127,13 @@ function [FOM,RBModel] = GenRBModel(varargin)
         FOM.saveFOM();
     else
         disp('Using FOM.mat from Results/ folder')
+        OrderedModelClass.changePath('ROM')
+        top = getenv("ROMEG_TOP");
         load([top '/Results/ROM/FOM.mat'],'FOM')
         FOM = FOM.startLogger();
         FOM = FOM.checkPaths('type','ROM');
+        FOM = FOM.saveROMparams(paramsROM);
+        FOM.saveFOM();
     end
     
     %% Step 2: Making the Reduced Order Model
@@ -138,11 +143,11 @@ function [FOM,RBModel] = GenRBModel(varargin)
         OMC = OMC.checkPaths('type','ROM');
         OMC = OMC.loadSinks();
         setenv('SE',num2str(OMC.num_patterns));
-        OMC.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
-    elseif isfield(paramsROM_S,'use_sinks') && ~paramsROM_S.use_sinks
+        FOM.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
+    elseif isfield(paramsROM_S,'use_sinks') && paramsROM_S.use_sinks
         setenv('SE',num2str(FOM.L-1));
         OMC.num_patterns = FOM.L-1;
-        OMC.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
+        FOM.logger.debug('GenRBModel',['Setting env var SE to ' num2str(OMC.num_patterns)])
     end
     
     if isfield(paramsROM_S,'Cluster') && paramsROM_S.Cluster

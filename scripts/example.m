@@ -22,7 +22,7 @@ tree = getenv("ROMEG");
 model = [tree '/models/Spherical/head_model.mat'];
 
 %% Make the elctrode injection pattern
-% creating and saving a file called sinks.mat that describe the injection 
+% Creating and saving a file called sinks.mat that describes the injection 
 % and extraction electrodes used to train ROM. This creates only 3 patterns
 % for training where the injections are electrodes 63, 64 and 65. All the
 % sinks are set to the final electrode (120 in this case).
@@ -55,7 +55,7 @@ GenMeasurements('model',model,'noise',0.82e-6,'synth_cond',...
 
 GenInverse('model',model,'ROM',true,'current',0.02e-3,...
     'use_sinks',true,'use_noise',true,'debug',true,...
-    'active_layers',[1 2])
+    'active_layers',[1 2],'ground',1)
 
 % Try adding the "'simultaneous',true" pair to the GenInverse function to
 % see all the electrode pairs be estimated together in one optimisation.
