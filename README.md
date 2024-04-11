@@ -122,6 +122,8 @@ We can also specify the tissues we wish to estimate by using
 the 'active_layers' parameter. We select the first 2 tissues given that is what we trained ROM for.
 The argument `'ROM',true` is also given to say we want to use the reduced order model for the inverse problem.
 To use the traditional method of pEIT, use `'TRAD',true` instead.
+Lastly, we need to add a ground electrode. We chose 1 here, although any electrode that isn't used
+in an injection pair would do.
 
 ```sh
 GenInverse('model',model,'ROM',true,'current',0.02e-3,...
