@@ -120,8 +120,8 @@ We have to tell the function to use the same electrode patterns used in training
 'use_noise'. 
 We can also specify the tissues we wish to estimate by using
 the 'active_layers' parameter. We select the first 2 tissues given that is what we trained ROM for.
-The argument "'ROM',true" is also given to say we want to use the reduced order model for the inverse problem.
-To use the traditional method of pEIT, use "'TRAD',true" instead.
+The argument `'ROM',true` is also given to say we want to use the reduced order model for the inverse problem.
+To use the traditional method of pEIT, use `'TRAD',true` instead.
 
 ```sh
 GenInverse('model',model,'ROM',true,'current',0.02e-3,...
@@ -132,7 +132,7 @@ GenInverse('model',model,'ROM',true,'current',0.02e-3,...
 Notice how it runs almost instantly AND the estimated values are really close to the synthetic values.
 You are encouraged to play around with the parameters, especially the conductivities.
 
-Try adding the "'simultaneous',true" pair to the GenInverse function to
+Try adding the `'simultaneous',true` pair to the GenInverse function to
 see all the electrode pairs be estimated together in one optimisation.
 
 This tutorial only gives a breif guide, and there are many more features and configurations to explore.
