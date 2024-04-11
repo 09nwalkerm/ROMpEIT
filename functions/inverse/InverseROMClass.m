@@ -10,6 +10,7 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
         weights
         weighted
         omit_layers
+        ground          % the reference/ground electrode
     end
 
     methods
@@ -97,7 +98,9 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                 estimate=fmincon(func,obj.x0,obj.A,obj.b,obj.Aeq,obj.beq,obj.lb,obj.ub,obj.nonlcon,options);
                 obj.estimate = [obj.estimate; estimate];
                 obj.logger.info('opt',['The estimated conductivities are ' num2str(estimate)])
-                obj.logger.info('opt',['The synthetic conductivities are ' num2str(obj.synth_cond)])
+                if ~isempty(obj.synth_cond)
+                    obj.logger.info('opt',['The synthetic conductivities are ' num2str(obj.synth_cond)])
+                end
             end
         end
         
@@ -141,11 +144,13 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                     end
                 end
                 zNh = zNh(end-(obj.eL-1):end);
-                zNh([el_in el_out]) = [];
+                zNh = zNh - zNh(obj.ground);
+                zNh([el_in el_out obj.ground]) = [];
             else
                 [zNh,~] = obj.RBapprox(el_in,mu_a);
                 zNh = zNh(end-(obj.eL-1):end);
-                zNh([el_in el_out]) = [];
+                zNh = zNh - zNh(obj.ground);
+                zNh([el_in el_out obj.ground]) = [];
             end
             
         end
@@ -177,9 +182,21 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
 
                     % Compute error between measurement and simulation
                     %disp(size(obj.u{ii}))
-                    u = obj.u{ii}(end -(obj.eL-1):end);
-                    u([el_in el_out]) = [];
-                    di=zNh1-u;
+%                     u = obj.u{ii}(end -(obj.eL-1):end);
+%                     u([el_in el_out]) = [];
+%                     di=zNh1-u;
+                    zNh1 = zNh1 - zNh1(obj.ground-size(obj.sinks,2));
+                    zNh1(obj.ground-size(obj.sinks,2)) = [];
+                    if isempty(obj.real) || ~obj.real
+                        u = obj.u{ii}(end -(obj.eL-1):end);
+                        u = u - u(obj.ground);
+                        u([el_in el_out obj.ground]) = [];
+                    else
+                        u=obj.u{ii};
+                        u([el_in el_out]) = [];
+                    end
+
+                    di=abs(zNh1)-abs(u);
                     if ~isempty(obj.weighted) && obj.weighted
                         %weights = normalize(obj.weights(ii,:)',"norm",1);
                         %obj.weights([el_in el_out]) = [];
@@ -192,9 +209,16 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                 el_in = obj.sinks(obj.pattern,1); el_out = obj.sinks(obj.pattern,2:end);
                 zNh1 = obj.combinedRBsolution(mu_a,el_in,el_out);
                 
-                u = obj.u{obj.pattern}(end -(obj.eL-1):end);
-                u([el_in el_out]) = [];
-                di=zNh1-u;
+                if isempty(obj.real) || ~obj.real
+                    u = obj.u{obj.pattern}(end -(obj.eL-1):end);
+                    u = u - u(obj.ground);
+                    u([el_in el_out obj.ground]) = [];
+                else
+                    u=obj.u{obj.pattern};
+                    u([el_in el_out]) = [];
+                end
+                
+                di=abs(zNh1)-abs(u); % to deal with amplitude ratio data, needs to be more robust
                 if ~isempty(obj.weighted) && obj.weighted
                     %weights = normalize(obj.weights(obj.pattern,:)',"norm",1);
                     %obj.weights([el_in el_out]) = [];
@@ -291,7 +315,9 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                 save([obj.top '/Results/inverse/ROM/' folder '/' obj.tag '_estimate.mat'],'estimate','sinks')
                 save([obj.top '/Results/inverse/ROM/' folder '/' obj.tag '_estimates.mat'],'estimates','sinks')
                 disp(['The average estimated conductivity using the ROM method is ' num2str(estimate)])
-                disp(['The synth conductivity values ---------------------------> ' num2str(inv.synth_cond)])
+                if ~isempty(inv.synth_cond)
+                    disp(['The synth conductivity values ---------------------------> ' num2str(inv.synth_cond)])
+                end
                 disp(['The fixed conductivity values ---------------------------> ' num2str(inv.cond_lf)])
                 disp(['Collected electrode estimates, averaged them and saved result (with sinks) in Results/inverse/ROM/' folder '/' obj.tag '_estimate.mat'])
             end

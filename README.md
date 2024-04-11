@@ -18,7 +18,7 @@ problems to solve. This toolbox marries the two techniques for rapid solutions t
 
 To use this work please cite as appropriate (citation to be updated soon)
 
-## Installation
+## Installation and Setup
 
 Firstly, download this git repository:
 
@@ -51,4 +51,90 @@ The documentation for each function and class in this toolbox can be found [here
 
 ## Getting Started
 
-Please see the example.m script in the scripts/ folder. More soon.
+In this section we aim to provide a basic walk-through of a typical use case for the software. This is one
+possible pipeline for the software but it gives an overview of the main functions and their inputs in this
+toolbox. Prerequisites: MATLAB R2021A or later with the Statistics and Machine Learning Toolbox.
+
+Please see the example.m script in the scripts/ folder for the full tutorial.
+Before running the example script or beginning this tutorial, please make sure the environment is set up
+correctly by sourcing the setup/set_env.sh script (see Installation and Setup above).
+If you have installed the BLEIGIFP script, please make sure it is added to your MATLAB path.
+
+In this example, we have a spherical head model represented by a finite element mesh with 84k nodes and 485k
+tetrahedrons.
+It is important that this mesh has the nodes labelled as 'p', the tetrahrdons labelled as 't' and also the
+surface triangular mesh labelled as 'f'. For 't', the fifth column must contain the tissue number that the 
+element belongs to. For 'f', the fourth column must contain the electrode number that the triangle belongs
+to. This is essential for any head model.
+This tutorial is designed to be lightweight so it can run on a single PC, therefore we only
+train for handlful of electrode pairs and bound interpolation points.
+
+We start by defining the conductivity ranges that form our parameter space used to train ROM. Notice the
+min and max values of some tissues are the same. This tells ROM we don't want to train for those layers.
+Then we define the path to our model.
+
+```sh
+mu_min=[0.303,0.002,1.7,0.3,5]; % minimum conductivities
+mu_max=[0.444,0.043,1.7,0.3,5]; % maximum conductivities
+
+tree = getenv("ROMEG");
+
+model = [tree '/models/Spherical/head_model.mat'];
+```
+
+Next, we create and save a file called sinks.mat that describes the injection 
+and extraction electrodes used to train ROM. This creates only 3 patterns
+for training where the injections are electrodes 63, 64 and 65. All the
+sinks are set to the final electrode (120 in this case).
+
+```sh
+OrderedModelClass.patterns('model',model,'electrodes',[63,64,65])
+```
+
+The following function then generates the Reduced Order Model by training within the min and max
+conductivity ranges. The 'nic' value is the number of bound interpolation
+points and Nmax is the number of snapshots. The current is the total current injected. The same amount is then
+extracted from the sink electrode.
+We'll set debug to true so that we can check the logs if something goes wrong.
+
+```sh
+GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'nic',10,...
+    'Nmax',10,'current',0.02e-3,'debug',true)
+```
+
+We don't have any real EIT data for this model so we're going to make some noisey synthetic measurements to
+use in the inverse problem. This uses the model
+to simulate the behaviour of the current and then adds noise to the
+measurements to simulate real world use. 
+In the function we define the noise we would like in Volts and the 'ground truth' conductivities that we
+later try to reconstruct in the inverse problem.
+
+```sh
+GenMeasurements('model',model,'noise',0.82e-6,'synth_cond',...
+    [0.4,0.009,1.7,0.3,5],'debug',true)
+```
+
+Finally, we can run the Inverse Problem for ROMpEIT.
+We have to tell the function to use the same electrode patterns used in training with
+'use_sinks' and also for it to read the noisey measurements with
+'use_noise'. 
+We can also specify the tissues we wish to estimate by using
+the 'active_layers' parameter. We select the first 2 tissues given that is what we trained ROM for.
+The argument "'ROM',true" is also given to say we want to use the reduced order model for the inverse problem.
+To use the traditional method of pEIT, use "'TRAD',true" instead.
+
+```sh
+GenInverse('model',model,'ROM',true,'current',0.02e-3,...
+    'use_sinks',true,'use_noise',true,'debug',true,...
+    'active_layers',[1 2],'ground',1)
+```
+
+Notice how it runs almost instantly AND the estimated values are really close to the synthetic values.
+You are encouraged to play around with the parameters, especially the conductivities.
+
+Try adding the "'simultaneous',true" pair to the GenInverse function to
+see all the electrode pairs be estimated together in one optimisation.
+
+This tutorial only gives a breif guide, and there are many more features and configurations to explore.
+To get started with them, either see the documentation, or type 'help' with any function into the MATLAB
+command line for the full list of arguments.

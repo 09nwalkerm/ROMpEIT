@@ -46,6 +46,8 @@ function GenInverse(varargin)
 %       then new sinks are used in the inverse problem
 %   omit_layers: when using synthetic measurements with different number of
 %       layers. Specify the layer(s) not trained in ROM model.
+%   ground: the reference/ground electrode
+%   real: are the measurements real (i.e. are the synthetic conds missing)?
 %
 
     params = [];
@@ -55,7 +57,8 @@ function GenInverse(varargin)
         {'current'},{'num_samples'},{'snaps'},{'fix_conds'}, ...
         {'active_layers'},{'sensitivity'},{'use_sinks'},{'new_sinks'}, ...
         {'complim'},{'use_noise'},{'sample_num'},{'noise'},{'tag'},...
-        {'debug'},{'ref_sink'},{'weighted'},{'omit_layers'},{'iter'}];
+        {'debug'},{'ref_sink'},{'weighted'},{'omit_layers'},{'iter'},...
+        {'ground'},{'real'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs

@@ -33,6 +33,7 @@ classdef InverseClass < OrderedModelClass
         noise           % for adding noise to the combined measurements
         ref_sink        % the reference electrode used as a sink for all pairs.
         iter
+        real
     end
 
     methods
@@ -41,7 +42,7 @@ classdef InverseClass < OrderedModelClass
 
             obj.pattern = pattern;
 
-            if ~isempty(obj.new_sinks) && obj.new_sinks
+            if ~isempty(obj.new_sinks) && obj.new_sinks && isempty(obj.real)
                 if ~isempty(obj.simultaneous) && obj.simultaneous
                     sink_nums=unique(obj.sinks)';sink_nums=sink_nums(1:end);    
                     noise = obj.use_noise;
@@ -60,6 +61,8 @@ classdef InverseClass < OrderedModelClass
                     measurements=obj.u;obj.u=[];
                     obj = obj.combineMeasurements(obj.pattern,measurements);
                 end
+            elseif ~isempty(obj.real) && obj.real && obj.new_sinks %&& ~isempty(obj.simultaneous)
+                obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
             else
                 if ~isempty(obj.simultaneous) && obj.simultaneous
                     obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
@@ -86,14 +89,19 @@ classdef InverseClass < OrderedModelClass
             
             try
                 if ~isempty(obj.use_noise) && obj.use_noise
-                    load([path '/pattern_' num2str(num) '_noise.mat'],'Data')
+                    load([path '/pattern_' num2str(num) '_noise.mat'])
                     obj.logger.debug('loadMeasurements',['Loading noisey synthetic pattern ' num2str(num) ' solution...'])
                 else
-                    load([path '/pattern_' num2str(num) '.mat'],'Data')
+                    load([path '/pattern_' num2str(num) '.mat'])
                     obj.logger.debug('loadMeasurements',['Loading synthetic pattern ' num2str(num) ' solution...'])
                 end
-                obj.u{num} = Data.u;
-                obj.synth_cond = Data.synth_cond;
+                
+                if isempty(obj.real) || ~obj.real
+                    obj.synth_cond = Data.synth_cond;
+                    obj.u{num} = Data.u;
+                else
+                    obj.u{num} = u;
+                end
             catch
                 if num==obj.ref_sink
                     obj.logger.debug('loadMeasurements',['Measurements for reference electrode ' num2str(obj.ref_sink) ' do not exist'])
