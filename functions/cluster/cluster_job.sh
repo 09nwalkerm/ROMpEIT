@@ -4,9 +4,8 @@
 #SBACTH --begin=now
 #SBATCH --partition=cubric-rocky8
 #SBATCH --exclude=c4b[8,17],c5b[2-4,8-10,12-17]
+###SBATCH --ntasks-per-node=8
 ###SBATCH --cpus-per-task 2
-###SBATCH --ntasks-per-node=10
-
 
 cd $ROMEG_TOP
 

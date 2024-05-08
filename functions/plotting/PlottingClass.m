@@ -26,6 +26,7 @@ classdef PlottingClass < OrderedModelClass
         estimates
         sources
         tag
+        elec_centers
     end
     methods
 
@@ -34,31 +35,32 @@ classdef PlottingClass < OrderedModelClass
         %   plotHeadModel(name1,value1,name2,value2...)
         %
         % Arguments:
-        %   model       - path to model
-        %   axis        - axis to cut along if desired e.g. 'x' or 'y'
-        %   cut         - how far along would you like to cut
-        %   fill        - how would you like to colour in the tetrahedrons
-        %   solution    - solution to the FEM equations.
-        %   electrodes  - (boolean) would you like the electrodes plotted 
+        %   model: path to model
+        %   axis: axis to cut along if desired e.g. 'x' or 'y'
+        %   cut: how far along would you like to cut
+        %   fill: how would you like to colour in the tetrahedrons
+        %   solution: solution to the FEM equations.
+        %   electrodes: (boolean) would you like the electrodes plotted 
         %                 on the scalp?
-        %   cond_map    - (boolean) for mapping the anisotropy in the
+        %   cond_map: (boolean) for mapping the anisotropy in the
         %                 skull which should be the second layer
-        %   sources     - is the cond_map made with sources
-        %   sample_num  - sample number to load estimates for.
-        %   folder      - (character vector) name of inverse sub-folder, leave
+        %   sources: is the cond_map made with sources
+        %   sample_num: sample number to load estimates for.
+        %   folder: (character vector) name of inverse sub-folder, leave
         %                 out to indicate main folder
-        %   elec_err    - plot the error of estimation on each electrode,
+        %   elec_err: plot the error of estimation on each electrode,
         %                 give layer number.
-        %   tag         - tag for estimates file
-        %   tissue      - which tissue to display (a number)
-        %   map_tissue  - tissue to interpolate onto skull
-        %   amp_dense   - plot the current density - must come with fill
+        %   tag: tag for estimates file
+        %   tissue: which tissue to display (a number)
+        %   map_tissue: tissue to interpolate onto skull
+        %   amp_dense: plot the current density - must come with fill
         %                 argument and conds argument
-        %   conds       - conductivity of head model for current density
-        %   LIC         - plot vector field
-        %   thickness   - boolean dispay thickness of skull as colour
-        %   cmap        - matlab colormap option
-        %   estimates   - the estimates on the electrodes to plot
+        %   conds: conductivity of head model for current density
+        %   LIC: plot vector field
+        %   thickness: boolean dispay thickness of skull as colour
+        %   cmap: matlab colormap option
+        %   estimates: the estimates on the electrodes to plot
+        %   elec_centers: centre point in metres of the electrodes
         %   
         %   
         %   Examples:
@@ -198,7 +200,30 @@ classdef PlottingClass < OrderedModelClass
 %                 s.Faces=tri2;
 %                 ty(~isnan(ty)==1)=ty(1);
 %                 s.FaceVertexCData=d(~isnan(ty));
-                s.CData = d(:);
+                %s.CData = d(:);
+                
+                %tetramesh(t,p,d)
+                s.Faces=tri1;
+                %t = sort(t,2);
+                %tri1 = sort(tri1,2);
+                
+                %parpool(2)
+                tic
+                parfor i=1:size(tri1,1)
+                    triangle = tri1(i,:);
+                    %disp(triangle)
+                    ts = ismember(t,triangle);
+                    [r,c,v] = find(ts);
+                    iloc = mode(r);
+                    FV(i) = d(iloc,1);
+                    if i == 1000
+                        disp('i=1000')
+                        toc
+                    end
+                    %s.FaceVertexCData(i)=d(iloc,1);
+                    %disp(iloc)
+                end
+                s.FaceVertexCData=FV;
             else
                 warning('Error');return;
             end
@@ -312,11 +337,13 @@ classdef PlottingClass < OrderedModelClass
 
                 t2 = obj.t(obj.t(:,5)==obj.map_tissue,1:4);
 
-                elec_centers = zeros(size(obj.estimates,1),3);
-                for ii = 1:length(electrodes)
-                    nodes = obj.f(obj.f(:,4)==electrodes(ii),1:3);
-                    nodes = unique(nodes);
-                    elec_centers(ii,:) = [mean(obj.p(nodes,1)) mean(obj.p(nodes,2)) mean(obj.p(nodes,3))];
+                if isempty(obj.elec_centers)
+                    obj.elec_centers = zeros(size(obj.estimates,1),3);
+                    for ii = 1:length(electrodes)
+                        nodes = obj.f(obj.f(:,4)==electrodes(ii),1:3);
+                        nodes = unique(nodes);
+                        obj.elec_centers(ii,:) = [mean(obj.p(nodes,1)) mean(obj.p(nodes,2)) mean(obj.p(nodes,3))];
+                    end
                 end
             else
                 %tbd
@@ -324,7 +351,7 @@ classdef PlottingClass < OrderedModelClass
 
             indx = unique(t2(:,1:4));
             pp = obj.p(indx,:);
-            PQ = dsearchn(pp,elec_centers);
+            PQ = dsearchn(pp,obj.elec_centers);
             F = scatteredInterpolant(pp(PQ,:),obj.estimates);
             obj.VQ = F(obj.p);
             obj.d = obj.VQ;
