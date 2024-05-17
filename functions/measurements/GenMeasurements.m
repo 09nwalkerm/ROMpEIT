@@ -39,7 +39,7 @@ function GenMeasurements(varargin)
 %   RB_path: path for the RBModel if NOT in $ROMEG_DATA
 %   debug: (boolean) turn debug mode on
 %   Cluster: should these measurements be made on the cluster?
-%
+%   pre_stiff: are the stiffness matrices already in the model.mat file?
 %
 % Examples:
 %   Basic isotropic measurements with no noise:
@@ -59,7 +59,7 @@ function GenMeasurements(varargin)
     paramslist = [{'synth_cond'},{'model'},{'sinks_path'},{'sinks'},{'current'}, ...
         {'top'},{'num_samples'},{'mu_min'},{'mu_max'},{'noise'},{'ROM'},{'Cluster'}, ...
         {'use_sinks'},{'anis_tan'},{'anis_rad'},{'angles'},{'ratio'},{'new_sinks'}, ...
-        {'redo'},{'sample_num'},{'RB_path'},{'debug'}];
+        {'redo'},{'sample_num'},{'RB_path'},{'debug'},{'pre_stiff'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs

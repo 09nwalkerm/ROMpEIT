@@ -283,16 +283,18 @@ classdef OrderedModelClass
                         %obj.top = [data '/Result' num2str(params.num)];
 
                     end
-                elseif strcmp(params.type,'eeg')
+                elseif strcmp(params.type,'eeg') || strcmp(params.type,'LF')
                     if ~isfolder([data '/Result' num2str(params.num)])
                         disp(['Making Result' num2str(params.num) ' folder.'])
                         mkdir([data '/Result' num2str(params.num)])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
-                        %obj.top = [data '/Result' num2str(params.num)];
+                        if strcmp(params.type,'LF'); params.num_dipoles=0; end
                         OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                     else
                         obj.logger.warn('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
+                        if strcmp(params.type,'LF'); params.num_dipoles=0; end
+                        OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                         %obj.top = [data '/Result' num2str(params.num)];
                     end
                 else
