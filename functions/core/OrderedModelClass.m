@@ -662,6 +662,7 @@ classdef OrderedModelClass
                 mkdir([top '/Results/EEG_FP'])
                 mkdir([top '/Results/slurm_logs'])
                 mkdir([top '/Results/logs'])
+                !ln -s $ROMEG_DATA/ROM/Results/ROM $ROMEG_TOP/Results/ROM
             else
                 warning('EEG_FP folder already exists, will be overwritten')
             end
