@@ -7,7 +7,7 @@ function [Ksk,D,d] = makeSkullCond(ptot,ttot,estimates,patterns,elecs)
     [p,t(:,1:4)]=removeisolatednode(ptot,t(:,1:4)); % Remove isolated nodes
     
     t1 = t(t(:,5)==2,1:4);
-    t2 = t(t(:,5)==3,1:4);
+    t2 = t(t(:,5)==4,1:4);
     %t8 = t(t(:,5)==8,1:4);
 
     logger.info('makeCondMatrix','Creating centroids...')
@@ -47,7 +47,7 @@ function [Ksk,D,d] = makeSkullCond(ptot,ttot,estimates,patterns,elecs)
     % interp
     
     estimates1=estimates(:,1)/mean(estimates(:,1));
-    
+    disp(estimates1)
     F1 = scatteredInterpolant([skull1; skull2],[estimates1; estimates1],'natural','linear');
     VQ = F1(centroids2);
     D1= VQ;
@@ -56,7 +56,7 @@ function [Ksk,D,d] = makeSkullCond(ptot,ttot,estimates,patterns,elecs)
     D1(D1>1.8)=0.0001;
     
     D = zeros(size(t,1),6);
-    D(t(:,5)==1,[1,4,6])=[D1 D1 D1];
+    D(t(:,5)==2,[1,4,6])=[D1 D1 D1];
     logger.info('makeCondMatrix','Calculating values for isotropic layer')
 
     np = size(p,1);

@@ -170,7 +170,7 @@ classdef PlottingClass < OrderedModelClass
                 t = obj.t;
             end
             
-            if ~isempty(obj.tissue)
+            if ~isempty(obj.tissue) && isempty(obj.cond_map)
                 t = obj.t(obj.t(:,5)==obj.tissue,1:4);
             end
             
@@ -191,9 +191,11 @@ classdef PlottingClass < OrderedModelClass
             else
                 tri2=tri1;
             end
-                
+
             if size(d,1)==size(p,1)
                 s.FaceVertexCData=d(:);s.Faces=tri1;
+                %s.FaceVertexCData=[0.98 0.86 0.20].*ones(size(d,1),3);s.Faces=tri1;
+                %s.FaceVertexCData=[0 0 1].*ones(size(d,1),3);s.Faces=tri1;
             elseif size(d,1)==size(t,1)
 %                 ty=tsearchn(p,double(tor),(p(tri2(:,1),:)+p(tri2(:,2),:)+p(tri2(:,3),:))/3);
 %                 s.FaceVertexCData=d(~isnan(ty));
@@ -316,46 +318,97 @@ classdef PlottingClass < OrderedModelClass
             OrderedModelClass.changePath(['Result' num2str(obj.sample_num)]); obj.top = getenv("ROMEG_TOP");
             
             %load sinks
-            obj = obj.loadSinks();
+            %obj = obj.loadSinks();
             electrodes = obj.sinks(:,1);
             
             %load estimates
             
-            if isempty(obj.sources) || obj.sources == false
-                if isempty(obj.estimates)
-                    if isempty(obj.folder)
-                        for ii=1:length(electrodes)
-                            load([obj.top '/Results/inverse/ROM/inv_' num2str(ii) '.mat'],'inv')
-                            estimates = [estimates; inv.estimate];
-                        end
-                        obj.estimates = estimates(:,obj.map_tissue);
-                    else
-                        load([obj.top '/Results/inverse/ROM/' obj.folder '/estimates.mat'],'estimates')
-                        obj.estimates = estimates(:,obj.map_tissue);
-                    end
-                end
+%             if isempty(obj.sources) || obj.sources == false
+%                 if isempty(obj.estimates)
+%                     if isempty(obj.folder)
+%                         for ii=1:length(electrodes)
+%                             load([obj.top '/Results/inverse/ROM/inv_' num2str(ii) '.mat'],'inv')
+%                             estimates = [estimates; inv.estimate];
+%                         end
+%                         obj.estimates = estimates(:,obj.map_tissue);
+%                     else
+%                         load([obj.top '/Results/inverse/ROM/' obj.folder '/estimates.mat'],'estimates')
+%                         obj.estimates = estimates(:,obj.map_tissue);
+%                     end
+%                 end
+% 
+%                 t2 = obj.t(obj.t(:,5)==obj.map_tissue,1:4);
+% 
+%                 if isempty(obj.elec_centers)
+%                     obj.elec_centers = zeros(size(obj.estimates,1),3);
+%                     for ii = 1:length(electrodes)
+%                         nodes = obj.f(obj.f(:,4)==electrodes(ii),1:3);
+%                         nodes = unique(nodes);
+%                         obj.elec_centers(ii,:) = [mean(obj.p(nodes,1)) mean(obj.p(nodes,2)) mean(obj.p(nodes,3))];
+%                     end
+%                 end
+%             else
+%                 %tbd
+%             end
 
-                t2 = obj.t(obj.t(:,5)==obj.map_tissue,1:4);
+%             indx = unique(t2(:,1:4));
+%             pp = obj.p(indx,:);
+%             PQ = dsearchn(pp,obj.elec_centers);
+%             F = scatteredInterpolant(pp(PQ,:),obj.estimates);
+%             obj.VQ = F(obj.p);
+%             obj.d = obj.VQ;
+%             obj.t=t2;
+            
+            
+            t1 = obj.t(obj.t(:,5)==obj.tissue,1:4);
+            t2 = obj.t(obj.t(:,5)==obj.tissue+1,1:4);
+            %t8 = t(t(:,5)==8,1:4);
 
-                if isempty(obj.elec_centers)
-                    obj.elec_centers = zeros(size(obj.estimates,1),3);
-                    for ii = 1:length(electrodes)
-                        nodes = obj.f(obj.f(:,4)==electrodes(ii),1:3);
-                        nodes = unique(nodes);
-                        obj.elec_centers(ii,:) = [mean(obj.p(nodes,1)) mean(obj.p(nodes,2)) mean(obj.p(nodes,3))];
-                    end
-                end
-            else
-                %tbd
+            obj.logger.info('makeCondMatrix','Creating centroids...')
+            %centroids8 = meshcentroid(p,t8);
+            centroids2 = meshcentroid(obj.p,t1);
+            centroids3 = meshcentroid(obj.p,t2);
+            obj.logger.info('makeCondMatrix','Centroids made... finding electrode centres')
+
+            elec_centers = obj.elec_centers;%obj.p(obj.elec_centers(:,1),:);
+
+            skull1 = zeros(size(obj.estimates,1),3);
+            csf1 = zeros(size(obj.estimates,1),3);
+            skull2 = zeros(size(obj.estimates,1),3);
+            obj.logger.info('makeCondMatrix','Starting loops...')
+
+            for i = 1:size(obj.estimates,1)
+                % closest skull centroid to electrode
+                %indx = unique(t2(:,1:4));
+                %pp = p(indx,:);
+
+                PQ = dsearchn(centroids2,elec_centers(electrodes(i,1),:));
+                skull1(i,1:3) = centroids2(PQ,1:3);
+                %skull1(i,1:3) = elec_centers(patterns(i,1),:);%centroids2(PQ,1:3);
+
+
+                % closest csf centroids3 to skull centroid
+                PQ = dsearchn(centroids3,skull1(i,:));
+                csf1(i,1:3) = centroids3(PQ,1:3);
+
+                % closest skull to csf
+                PQ = dsearchn(centroids2,csf1(i,:));
+                skull2(i,1:3) = centroids2(PQ,1:3);
+                %disp(['Finished electrode ' num2str(i)])
             end
-
-            indx = unique(t2(:,1:4));
-            pp = obj.p(indx,:);
-            PQ = dsearchn(pp,obj.elec_centers);
-            F = scatteredInterpolant(pp(PQ,:),obj.estimates);
-            obj.VQ = F(obj.p);
-            obj.d = obj.VQ;
-            obj.t=t2;
+            
+            %obj.estimates=obj.estimates(:,1)/mean(obj.estimates(:,1));
+            %disp(obj.estimates)
+            %F1 = scatteredInterpolant([skull1; skull2],[obj.estimates; obj.estimates],'natural','linear');
+            %F1 = scatteredInterpolant(elec_centers(electrodes,:),obj.estimates,'natural','linear');
+            F1 = scatteredInterpolant(skull1,obj.estimates,'natural','linear');
+            obj.d = zeros(size(obj.p,1),1);
+            t_p = unique(obj.t(obj.t(:,5)==obj.tissue,1:4));
+            VQ2 = F1(obj.p(t_p,1:3));
+            obj.d(t_p) = VQ2;
+            obj.t=t1;
+            %obj.d(obj.d<0.05)= 0.0001;
+            %obj.d(obj.d>1.9)=0.0001;
         end
     end
 end

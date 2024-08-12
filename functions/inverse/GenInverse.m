@@ -59,7 +59,8 @@ function GenInverse(varargin)
         {'active_layers'},{'sensitivity'},{'use_sinks'},{'new_sinks'}, ...
         {'complim'},{'use_noise'},{'sample_num'},{'noise'},{'tag'},...
         {'debug'},{'ref_sink'},{'weighted'},{'omit_layers'},{'iter'},...
-        {'ground'},{'real'},{'simultaneousN'}];
+        {'ground'},{'real'},{'simultaneousN'},{'u'},{'RBModel'},...
+        {'Display'},{'lb'},{'ub'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs
@@ -119,7 +120,9 @@ function [invROM,invTRAD] = prep(params_S,params,samples)
             
             inv = InverseROMClass(params);
             inv = inv.checkPaths('type','inverse','num',i);
-            inv.savePrep();
+            if isfield(params_S,'Cluster') && params_S.Cluster
+                inv.savePrep();
+            end
             invROM{i} = inv;
         end
         
@@ -129,13 +132,16 @@ function [invROM,invTRAD] = prep(params_S,params,samples)
     
             inv = InverseTradClass(params);
             inv = inv.checkPaths('type','inverse','num',i);
-            inv.savePrep();
+            if isfield(params_S,'Cluster') && params_S.Cluster
+                inv.savePrep();
+            end
             invTRAD{i} = inv;
         end
     end
 end
 
 function [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD)
+
     for i = samples
         setenv("ROMEG_TOP",invROM{i}.top)
         if isfield(params_S,'ROM') && params_S.ROM
@@ -165,10 +171,18 @@ function [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD)
                 end
                 invROM{i}.logger.info('run',['Finished ROM inverse problem for sample ' num2str(i)])
             else
+                if ~isfield(params_S,'RBModel')
+                    load([invROM{i}.top '/Results/ROM/RBModel.mat'],'RBModel')
+                    invROM{i}.RBModel = RBModel;
+                end
+                
                 for ii=1:num_injections
-                    invROM{i}.runInverse(ii);
-                    invROM{i}.saveInv();
-                    invROM{i}.logger.info('run',['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
+                    %invROM{i}.RBModel = RBModel;
+                    invROM{i}.LF = [];
+                    invROM{i} = invROM{i}.runInverse(ii);
+                    %invROM{i}.saveInv();
+                    invROM{i}.estimates(ii,:) = invROM{i}.estimate;
+                    invROM{i}.logger.debug('run',['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
                 end
             end
             try

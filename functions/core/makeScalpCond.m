@@ -70,5 +70,5 @@ function [Ksc,D,d] = makeScalpCond(ptot,ttot,estimates,patterns,elecs)
     
     d(isnan(d))=1;
     d(d<0.05)= 0.0001;
-    d(d>1.9)=0.0001;
+    d(d>2)=0.0001;
 end
