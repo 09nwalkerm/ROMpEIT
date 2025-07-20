@@ -16,7 +16,7 @@ the rapid calculation of paramterised boundary value problems. Parametric Electr
 a technique to estimate the conductivites of the tissues in the head, containing within it many boundary value
 problems to solve. This toolbox marries the two techniques for rapid solutions to the pEIT problem.
 
-To use this work please cite as appropriate (citation to be updated soon)
+If using this work in your research please cite as 'Matthew R Walker et al 2025 J. Neural Eng. 22 016018'. The DOI is [10.1088/1741-2552/adab20](doi.org/10.1088/1741-2552/adab20).
 
 ## Installation and Setup
 

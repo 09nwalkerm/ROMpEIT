@@ -24,7 +24,8 @@ extensions = [
          "sphinx.ext.autodoc",
          "sphinx_rtd_theme",
          "sphinx.ext.viewcode",
-         "sphinx.ext.napoleon"
+         "sphinx.ext.napoleon",
+         "sphinx.ext.mathjax"
      ]
 
 primary_domain = "mat"
