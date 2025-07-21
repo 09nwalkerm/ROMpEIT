@@ -24,10 +24,7 @@ classdef MeasurementClass < OrderedModelClass
             obj@OrderedModelClass(varargin);
         end
 
-        function obj = genData(obj,injection)
-            
-            obj.el_in = obj.sinks(injection,1);
-
+        function S_cem = makeStiffness(obj)
             p = obj.p; t = obj.t; f= obj.f;
             obj.logger.debug('genData',['size of t ' num2str(size(t))])
             
@@ -89,7 +86,6 @@ classdef MeasurementClass < OrderedModelClass
                 end
             end
 
-            %%
             np=size(p,1);
             eL = length(unique(f(:,end)))-1;
             
@@ -98,17 +94,38 @@ classdef MeasurementClass < OrderedModelClass
             [A,B,C] = femeg_stiffness_cem(p,t,f,obj.synth_cond(end)); %Adjusted from 5 to more general obj.synth_cond(end)
             S_cem = [A, -B; -B', C];
             S_cem = S_cem + S;
+        end
+        
+        function obj = genData(obj,injection)
+            
+            obj.el_in = obj.sinks(injection,1);
+
+            
+            if ~isempty(obj.pre_stiff) && obj.pre_stiff
+                S_cem = obj.Aq{end}/obj.synth_cond(end);
+                for i=1:length(obj.synth_cond)-1
+                    S_cem = S_cem + obj.synth_cond(i)*obj.Aq{i};
+                end
+                eL = obj.L;
+            else
+                S_cem = obj.makeStiffness();
+                eL = length(unique(obj.f(:,end)))-1;
+            end
+            
             [L,U] = ilu(S_cem);
+            np=size(obj.p,1);
+            
             
             % Injection nodes
             el_in=obj.el_in; I_in=obj.current;%p_in=unique(f(f(:,4)==el_in));I_in=1/size(p_in,1);
             el_out=obj.sinks(injection,2:end); I_out=(-1*I_in)/length(el_out);%p_out=unique(f(f(:,4)==el_out));I_out=-1/size(p_out,1);
             %b = sparse([p_in;p_out],1,[I_in;I_out],size(p,1),1);
-            b = spalloc(size(p,1)+eL,1,length(el_out)+1);
-            b(np+el_in) = I_in;
-            b(el_out+np) = I_out;
+            b = spalloc(np+eL,1,length(el_out)+1);
+            obj.logger.debug('genData',['Length of right hand side b is ' num2str(size(b))])
+            b(np+el_in,1) = I_in;
+            b(el_out+np,1) = I_out;
             
-            [u,flag] = pcg(S_cem,b,1e-10,4000,L,U);
+            [u,flag] = pcg(S_cem,b(:,1),1e-10,4000,L,U);
             
             %u2 = u(end-(eL-1):end);
             

@@ -226,6 +226,7 @@ classdef ROMClass < OrderedModelClass
 
                 obj.logger.debug('runGreedy',['The time after error estimates is ' num2str(toc)])
                 obj.logger.debug('runGreedy',['Error estimates took: ' num2str(toc(time1))])
+                delta_N = real(delta_N);
                 [delta_Max, new_mu_indx] = max(delta_N);
 
                 delta_Mean=mean(delta_N);

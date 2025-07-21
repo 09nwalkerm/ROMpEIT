@@ -34,6 +34,7 @@ classdef OrderedModelClass
         pre_stiff      % are the stiff mats already in head_model file?
         L
         Aq
+        no_repeats
     end
     
     %properties (Access = protected)
@@ -283,16 +284,18 @@ classdef OrderedModelClass
                         %obj.top = [data '/Result' num2str(params.num)];
 
                     end
-                elseif strcmp(params.type,'eeg')
+                elseif strcmp(params.type,'eeg') || strcmp(params.type,'LF')
                     if ~isfolder([data '/Result' num2str(params.num)])
                         disp(['Making Result' num2str(params.num) ' folder.'])
                         mkdir([data '/Result' num2str(params.num)])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
-                        %obj.top = [data '/Result' num2str(params.num)];
+                        if strcmp(params.type,'LF'); params.num_dipoles=0; end
                         OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                     else
                         obj.logger.warn('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
+                        if strcmp(params.type,'LF'); params.num_dipoles=0; end
+                        OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                         %obj.top = [data '/Result' num2str(params.num)];
                     end
                 else
@@ -335,6 +338,8 @@ classdef OrderedModelClass
         %       new_sinks: are these new sinks being made for inverse
         %       close: select the closest electrodes. Default is furthest
         %                     away
+        %       no_repeats: do not use the same electrodes in opposite
+        %                   patterns
         %
         %   Examples:
         %       
@@ -380,7 +385,7 @@ classdef OrderedModelClass
                     for jj = 1:size(elec_sinks,1)
                         lengths(jj,:) = elec_sinks(jj,:) - pos(:,:);
                         if ~isempty(obj.elec_height)
-                            if (elec_sinks(jj,3) < obj.elec_height), lengths(jj,:) = []; end
+                            if (elec_sinks(jj,3) < obj.elec_height), lengths(jj,:) = NaN; end
                         end
                     end
 
@@ -390,7 +395,19 @@ classdef OrderedModelClass
                         [~,ind] = mink(norms,obj.num_sinks+1);
                         ind = ind(2:end);
                     else
-                        [~,ind] = maxk(norms,obj.num_sinks);
+                        if isempty(obj.no_repeats)
+                            [~,ind] = maxk(norms,obj.num_sinks);
+                        else
+                            [~,ind] = maxk(norms,obj.num_sinks);
+                            taken = unique(sinks(:,2:obj.num_sinks+1));
+                            %disp(taken)
+                            while ~isempty(find(ismember(taken,ind)))
+                                lengths(ind,:) = NaN;
+                                norms = vecnorm(lengths');
+                                [~,ind] = maxk(norms,obj.num_sinks);
+                                %disp(ind)
+                            end
+                        end
                     end
 
                     sinks(ii,2:obj.num_sinks+1) = ind;
@@ -658,8 +675,10 @@ classdef OrderedModelClass
             top = getenv("ROMEG_TOP");
             if ~isfolder([top '/Results/EEG_FP'])
                 mkdir([top '/Results/EEG_FP'])
+                mkdir([top '/Results/measurements'])
                 mkdir([top '/Results/slurm_logs'])
                 mkdir([top '/Results/logs'])
+                !ln -s $ROMEG_DATA/ROM/Results/ROM $ROMEG_TOP/Results/ROM
             else
                 warning('EEG_FP folder already exists, will be overwritten')
             end

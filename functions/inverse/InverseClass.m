@@ -38,46 +38,63 @@ classdef InverseClass < OrderedModelClass
 
     methods
 
-        function runInverse(obj,pattern)
+        function obj = runInverse(obj,pattern)
 
             obj.pattern = pattern;
-
-            if ~isempty(obj.new_sinks) && obj.new_sinks && isempty(obj.real)
-                if ~isempty(obj.simultaneous) && obj.simultaneous
-                    sink_nums=unique(obj.sinks)';sink_nums=sink_nums(1:end);    
-                    noise = obj.use_noise;
-                    obj.use_noise = [];
-                    obj = obj.loadMultiMeasurements(sink_nums);
-                    obj.use_noise = noise;
-                    measurements=obj.u;obj.u=[];
-                    for jj = 1:size(obj.sinks,1)
-                        obj = obj.combineMeasurements(jj,measurements);
-                    end
-                else
-                    noise = obj.use_noise;
-                    obj.use_noise = [];
-                    obj = obj.loadMultiMeasurements(obj.sinks(obj.pattern,:));
-                    obj.use_noise = noise;
-                    measurements=obj.u;obj.u=[];
-                    obj = obj.combineMeasurements(obj.pattern,measurements);
-                end
-            elseif ~isempty(obj.real) && obj.real && obj.new_sinks %&& ~isempty(obj.simultaneous)
-                obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
-            else
-                if ~isempty(obj.simultaneous) && obj.simultaneous
-                    obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
-                else
-                    obj = obj.loadMeasurements(obj.pattern);
-                end    
+            
+            if isempty(obj.u)
+                obj = obj.collectData();
             end
             
             obj = obj.setUp();
 
             obj = obj.opt();
             
-            obj.saveInv();
+            if isempty(obj.Cluster) && isa(obj,"InverseROMClass")
+            else
+                obj.saveInv();
+            end
         end
 
+        function obj = collectData(obj)
+
+                if ~isempty(obj.new_sinks) && obj.new_sinks && isempty(obj.real)
+                    if ~isempty(obj.simultaneous) && obj.simultaneous
+                        sink_nums=unique(obj.sinks)';sink_nums=sink_nums(1:end);    
+                        noise = obj.use_noise;
+                        obj.use_noise = [];
+                        obj = obj.loadMultiMeasurements(sink_nums);
+                        obj.use_noise = noise;
+                        measurements=obj.u;obj.u=[];
+                        for jj = 1:size(obj.sinks,1)
+                            obj = obj.combineMeasurements(jj,measurements);
+                        end
+                    else
+                        noise = obj.use_noise;
+                        obj.use_noise = [];
+                        obj = obj.loadMultiMeasurements(obj.sinks(obj.pattern,:));
+                        obj.use_noise = noise;
+                        measurements=obj.u;obj.u=[];
+                        obj = obj.combineMeasurements(obj.pattern,measurements);
+                    end
+                elseif ~isempty(obj.real) && obj.real && obj.new_sinks %&& ~isempty(obj.simultaneous)
+                    obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
+                else
+                    if ~isempty(obj.simultaneous) && obj.simultaneous
+                        obj = obj.loadMultiMeasurements(1:size(obj.sinks,1));
+                    else
+                        if ~isempty(obj.noise)
+                            obj.use_noise = [];
+                            obj = obj.loadMeasurements(obj.pattern);
+                            obj = obj.addNoise(obj.pattern);
+                            obj.use_noise = true;
+                        else
+                            obj = obj.loadMeasurements(obj.pattern);
+                        end
+                    end    
+                end
+        end
+        
         function obj = loadMeasurements(obj,num)
             
             if ~isempty(obj.data_path)

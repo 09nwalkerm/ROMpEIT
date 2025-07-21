@@ -3,6 +3,7 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
     properties
         LF              % ROM model
         simultaneous    % simultaneous electrode estimation
+        simultaneousN
         snaps           % boolean, run inverse for all number of snapshots
         snap            % current number of snapshots to use in RBModel
         min_snap
@@ -11,6 +12,8 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
         weighted
         omit_layers
         ground          % the reference/ground electrode
+        RBModel
+        Display
     end
 
     methods
@@ -48,8 +51,10 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                 obj.te = obj.active_layers;
             end
 
-            if obj.fix_conds
+            if obj.fix_conds == 1
                 obj.cond_lf = (LF.mu_min(obj.lf) + LF.mu_max(obj.lf))/2;
+            elseif ~isempty(obj.fix_conds)
+                obj.cond_lf = obj.fix_conds;
             else
                 if isempty(obj.omit_layers)
                     obj.cond_lf = obj.synth_cond(obj.lf);
@@ -61,21 +66,55 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                 %disp('Warning: Using synth conds from measurements to assign layers')
                 %disp('Make sure they are the same length and if not use fix_conds')
             end
-            obj.lb = LF.mu_min(obj.te);
-            obj.ub = LF.mu_max(obj.te);
+            
+            if isempty(obj.lb)
+                obj.lb = LF.mu_min(obj.te);
+            end
+            
+            if isempty(obj.ub)
+                obj.ub = LF.mu_max(obj.te);
+            end
             
             if isempty(obj.x0), obj.x0 = (obj.lb + obj.ub)/2; end
+            
+            if ~isempty(obj.simultaneousN)
+                simN = find(ismember(obj.active_layers,obj.simultaneousN));
+                sims = obj.x0(simN);
+                indx = find(~ismember(obj.active_layers,obj.simultaneousN));
+                inds = repmat(obj.x0(indx),1,size(obj.sinks,1));
+                obj.x0 = [inds sims];
+                
+                sims = obj.lb(simN);
+                indx = find(~ismember(obj.active_layers,obj.simultaneousN));
+                inds = repmat(obj.lb(indx),1,size(obj.sinks,1));
+                obj.lb = [inds sims];
+                
+                sims = obj.ub(simN);
+                indx = find(~ismember(obj.active_layers,obj.simultaneousN));
+                inds = repmat(obj.ub(indx),1,size(obj.sinks,1));
+                obj.ub = [inds sims];
+            end
 
         end
 
         function obj = opt(obj)
             
+            if isempty(obj.Display)
+                obj.Display = 'iter';
+            end
+            
             if ~isempty(obj.simultaneous) && obj.simultaneous
-                options = optimoptions(@fmincon,'Display','iter','Algorithm','interior-point',...
-                    'FiniteDifferenceType','central','OptimalityTolerance',1e-13,...
-                    'MaxFunctionEvaluations',5000,'MaxIterations',2000);
+                if isempty(obj.simultaneousN)
+                    options = optimoptions(@fmincon,'Display',obj.Display,'Algorithm','interior-point',...
+                        'FiniteDifferenceType','central','OptimalityTolerance',1e-13,...
+                        'MaxFunctionEvaluations',5000,'MaxIterations',2000);
+                else
+                    options = optimoptions(@fmincon,'Display',obj.Display,'Algorithm','interior-point',...
+                        'FiniteDifferenceType','central','OptimalityTolerance',1e-13,...
+                        'MaxFunctionEvaluations',20000,'MaxIterations',2000);
+                end
             else
-                options = optimoptions(@fmincon,'Display','iter','Algorithm','interior-point',...
+                options = optimoptions(@fmincon,'Display',obj.Display,'Algorithm','interior-point',...
                     'FiniteDifferenceType','central','OptimalityTolerance',1e-13,...
                     'MaxFunctionEvaluations',20000,'MaxIterations',2000);
             end
@@ -94,12 +133,27 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                     obj.snap = [];
                 end
                 
-                func=@(cond_te)obj.functionEITSim(cond_te);
-                estimate=fmincon(func,obj.x0,obj.A,obj.b,obj.Aeq,obj.beq,obj.lb,obj.ub,obj.nonlcon,options);
-                obj.estimate = [obj.estimate; estimate];
-                obj.logger.info('opt',['The estimated conductivities are ' num2str(estimate)])
-                if ~isempty(obj.synth_cond)
-                    obj.logger.info('opt',['The synthetic conductivities are ' num2str(obj.synth_cond)])
+                if ~isempty(obj.simultaneousN)
+                    func=@(cond_te)obj.functionEITSimN(cond_te);
+                    estimate=fmincon(func,obj.x0,obj.A,obj.b,obj.Aeq,obj.beq,obj.lb,obj.ub,obj.nonlcon,options);
+                    obj.estimate = [obj.estimate; estimate];
+                    if strcmp(obj.Display,'iter')
+                        obj.logger.info('opt',['The simN estimated conductivities are ' num2str(estimate(end-length(obj.simultaneousN)+1:end))])
+                        if ~isempty(obj.synth_cond)
+                            obj.logger.info('opt',['The synthetic conductivities are ' num2str(obj.synth_cond)])
+                        end
+                    end
+                else
+                    func=@(cond_te)obj.functionEITSim(cond_te);
+                    estimate=fmincon(func,obj.x0,obj.A,obj.b,obj.Aeq,obj.beq,obj.lb,obj.ub,obj.nonlcon,options);
+                    obj.estimate = [obj.estimate; estimate];
+                    if strcmp(obj.Display,'iter')
+                        obj.logger.info('opt',['The estimated conductivities are ' num2str(estimate)])
+                        if ~isempty(obj.synth_cond)
+                            obj.logger.info('opt',['The synthetic conductivities are ' num2str(obj.synth_cond)])
+                        end
+                    end
+
                 end
             end
         end
@@ -144,13 +198,13 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                     end
                 end
                 zNh = zNh(end-(obj.eL-1):end);
-                zNh = zNh - zNh(obj.ground);
-                zNh([el_in el_out obj.ground]) = [];
+                %zNh = zNh - zNh(obj.ground);
+                %zNh([el_in el_out obj.ground]) = [];
             else
                 [zNh,~] = obj.RBapprox(el_in,mu_a);
                 zNh = zNh(end-(obj.eL-1):end);
-                zNh = zNh - zNh(obj.ground);
-                zNh([el_in el_out obj.ground]) = [];
+                %zNh = zNh - zNh(obj.ground);
+                %zNh([el_in el_out obj.ground]) = [];
             end
             
         end
@@ -179,18 +233,22 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                     %obj.pattern = ii;
                     el_in = obj.sinks(ii,1); el_out = obj.sinks(ii,2:end);
                     zNh1 = obj.combinedRBsolution(mu_a,el_in,el_out);
-
-                    % Compute error between measurement and simulation
-                    %disp(size(obj.u{ii}))
-%                     u = obj.u{ii}(end -(obj.eL-1):end);
-%                     u([el_in el_out]) = [];
-%                     di=zNh1-u;
-                    zNh1 = zNh1 - zNh1(obj.ground-size(obj.sinks,2));
-                    zNh1(obj.ground-size(obj.sinks,2)) = [];
+                    if isempty(obj.ground) || strcmp(obj.ground,'avg')
+                        zNh1([el_in el_out]) = [];
+                        zNh1 = zNh1 - mean(zNh1);
+                    else
+                        zNh1 = zNh1 - zNh1(obj.ground);
+                        zNh1([el_in el_out obj.ground]) = [];
+                    end
                     if isempty(obj.real) || ~obj.real
                         u = obj.u{ii}(end -(obj.eL-1):end);
-                        u = u - u(obj.ground);
-                        u([el_in el_out obj.ground]) = [];
+                        if isempty(obj.ground) || strcmp(obj.ground,'avg')
+                            u([el_in el_out]) = [];
+                            u = u - mean(u);
+                        else
+                            u = u - u(obj.ground);
+                            u([el_in el_out obj.ground]) = [];
+                        end
                     else
                         u=obj.u{ii};
                         u([el_in el_out]) = [];
@@ -198,8 +256,6 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
 
                     di=abs(zNh1)-abs(u);
                     if ~isempty(obj.weighted) && obj.weighted
-                        %weights = normalize(obj.weights(ii,:)',"norm",1);
-                        %obj.weights([el_in el_out]) = [];
                         di = di.*obj.weights(ii,:)';
                     end
                     f_tmp(ii,1)=norm(di)/norm(zNh1);
@@ -208,37 +264,93 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
             else
                 el_in = obj.sinks(obj.pattern,1); el_out = obj.sinks(obj.pattern,2:end);
                 zNh1 = obj.combinedRBsolution(mu_a,el_in,el_out);
-                
+                if isempty(obj.ground) || strcmp(obj.ground,'avg')
+                    zNh1([el_in el_out]) = []; %zNh1 = abs(zNh1);
+                    zNh1 = zNh1 - mean(zNh1);
+                elseif strcmp(obj.ground,'avg_ref')
+                    %zNh1 = zNh1 - zNh1(obj.ref_sink);
+                    zNh1([el_in el_out 6 55 119 obj.ref_sink]) = [];
+                    zNh1 = abs(zNh1); zNh1 = zNh1 - mean(zNh1); % WARNING: THIS IS WRONG
+                else
+                    zNh1 = zNh1 - zNh1(obj.ground);
+                    zNh1([el_in el_out obj.ground]) = [];
+                end
                 if isempty(obj.real) || ~obj.real
                     u = obj.u{obj.pattern}(end -(obj.eL-1):end);
-                    u = u - u(obj.ground);
-                    u([el_in el_out obj.ground]) = [];
+                    if isempty(obj.ground) || strcmp(obj.ground,'avg')
+                        u([el_in el_out]) = [];
+                        u = u - mean(u);
+                    else
+                        u = u - u(obj.ground);
+                        u([el_in el_out obj.ground]) = [];
+                    end
                 else
                     u=obj.u{obj.pattern};
-                    u([el_in el_out]) = [];
+                    %u([el_in el_out]) = [];
                 end
-                
+
                 di=abs(zNh1)-abs(u); % to deal with amplitude ratio data, needs to be more robust
                 if ~isempty(obj.weighted) && obj.weighted
-                    %weights = normalize(obj.weights(obj.pattern,:)',"norm",1);
-                    %obj.weights([el_in el_out]) = [];
                     di = di.*obj.weights(obj.pattern,:)';
                 end
-                f=norm(di)/norm(zNh1);
+                f=norm(di)/norm(u);
+                %rho = corr(abs(zNh1),abs(u),'Type','Kendall');
+                %f = f+(1/(rho+10));
             end 
+        end
+        
+        function f = functionEITSimN(obj,cond_te)
+
+            f_tmp = zeros(obj.eL,1);
+            for ii = 1:size(obj.sinks,1)
+                conds = [cond_te(ii) cond_te(end-length(obj.simultaneousN)+1:end)];
+                mu_a = obj.makeMu(conds);
+                el_in = obj.sinks(ii,1); el_out = obj.sinks(ii,2:end);
+                zNh1 = obj.combinedRBsolution(mu_a,el_in,el_out);
+                if isempty(obj.ground) || strcmp(obj.ground,'avg')
+                    zNh1([el_in el_out]) = [];
+                    zNh1 = zNh1 - mean(zNh1);
+                else
+                    zNh1 = zNh1 - zNh1(obj.ground);
+                    zNh1([el_in el_out obj.ground]) = [];
+                end
+                if isempty(obj.real) || ~obj.real
+                    u = obj.u{obj.pattern}(end -(obj.eL-1):end);
+                    if isempty(obj.ground) || strcmp(obj.ground,'avg')
+                        u([el_in el_out]) = [];
+                        u = u - mean(u);
+                    else
+                        u = u - u(obj.ground);
+                        u([el_in el_out obj.ground]) = [];
+                    end
+                else
+                    u=obj.u{ii};
+                    u([el_in el_out]) = [];
+                end
+
+                di=abs(zNh1)-abs(u);
+                if ~isempty(obj.weighted) && obj.weighted
+                    di = di.*obj.weights(ii,:)';
+                end
+                f_tmp(ii,1)=norm(di)/norm(zNh1);
+            end
+            f = mean(f_tmp,1);
         end
 
         function obj = loadLF(obj)
-            if isempty(obj.LF)
-                obj.logger.info('loadLF','Loading RBModel from Results folder')
+            if isempty(obj.LF) && isempty(obj.RBModel)
+                obj.logger.debug('loadLF','Loading RBModel from Results folder')
                 load([obj.top '/Results/ROM/RBModel.mat'],'RBModel')
+            elseif isempty(obj.LF)
+                RBModel = obj.RBModel;
             end
             if ~isempty(obj.new_sinks) && obj.new_sinks && isempty(obj.simultaneous) %&& isempty(obj.use_sinks)
                 obj.LF = {};
                 N_list = [];
-                sink_elec = RBModel.LF{1}.sink_elec;
+                %sink_elec = RBModel.LF{1}.sink_elec;
                 for i=obj.sinks(obj.pattern,:)
-                    if ~(i==sink_elec)
+                    %if ~(i==sink_elec)
+                    if ~(i==obj.ref_sink)
                         %disp(['Loading LF for pattern ' num2str(i)])
                         obj.LF{i} = RBModel.LF{i};
                         obj.logger.debug('loadLF',['Loading ROM LF ' num2str(i) ' into obj.LF ' num2str(i)])
@@ -290,7 +402,7 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                 obj.num_patterns = 1;
             end
             
-            if obj.snaps
+            if obj.snaps %&& obj.Cluster
                 estimates = [];
                 for i=1:obj.num_patterns
                     load([obj.top '/Results/inverse/ROM/' folder '/inv_' num2str(i) '.mat'],'inv')
@@ -301,13 +413,20 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                 sinks = obj.sinks;
                 save([obj.top '/Results/inverse/ROM/' folder '/' obj.tag '_estimate_snaps.mat'],'estimates','sinks')
                 disp(['Collected electrode estimates and saved result (with sinks) in Results/inverse/ROM/' folder '/' obj.tag '_estimate_snaps.mat'])
-            else
+            elseif obj.Cluster
                 estimates = [];
                 for i=1:obj.num_patterns
                     load([obj.top '/Results/inverse/ROM/' folder '/inv_' num2str(i) '.mat'],'inv')
                     estimates = [estimates; inv.estimate];
                     delete([obj.top '/Results/inverse/ROM/' folder '/inv_' num2str(i) '.mat'])
                 end
+                
+                if ~isempty(obj.simultaneousN)
+                    nosim = estimates(1,1:size(obj.sinks,1));
+                    simN = estimates(end-length(obj.simultaneousN)+1:end);
+                    estimates = [nosim' repmat(simN,length(nosim),1)];
+                end
+                
                 obj.estimates = estimates;
                 estimate = mean(estimates,1);
                 sinks = obj.sinks;
@@ -319,6 +438,18 @@ classdef InverseROMClass < InverseClass & OrderedModelClass
                     disp(['The synth conductivity values ---------------------------> ' num2str(inv.synth_cond)])
                 end
                 disp(['The fixed conductivity values ---------------------------> ' num2str(inv.cond_lf)])
+                disp(['Collected electrode estimates, averaged them and saved result (with sinks) in Results/inverse/ROM/' folder '/' obj.tag '_estimate.mat'])
+            else
+                estimates = obj.estimates;
+                estimate = mean(obj.estimates,1);
+                sinks = obj.sinks;
+                save([obj.top '/Results/inverse/ROM/' folder '/' obj.tag '_estimate.mat'],'estimate','sinks')
+                save([obj.top '/Results/inverse/ROM/' folder '/' obj.tag '_estimates.mat'],'estimates','sinks')
+                disp(['The average estimated conductivity using the ROM method is ' num2str(estimate)])
+                if ~isempty(obj.synth_cond)
+                    disp(['The synth conductivity values ---------------------------> ' num2str(obj.synth_cond)])
+                end
+                disp(['The fixed conductivity values ---------------------------> ' num2str(obj.cond_lf)])
                 disp(['Collected electrode estimates, averaged them and saved result (with sinks) in Results/inverse/ROM/' folder '/' obj.tag '_estimate.mat'])
             end
         end

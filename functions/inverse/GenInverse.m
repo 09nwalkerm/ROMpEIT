@@ -27,7 +27,7 @@ function GenInverse(varargin)
 %   sample_num: the specific sample or samples to run for
 %   snaps: (boolean) would you like the inverse to be run for each
 %                     number of snapshots (this will take much longer)
-%   fix_conds: (boolean) fixes the non_active parameters to the middle
+%   fix_conds: either boolean or an array of ALL non-active layer conds
 %   active_layers: array of the layers to keep active for inverse
 %   sensitivity: is this a sensitivity analysis?
 %   new_sinks: (boolean) use a new set of sinks called
@@ -48,6 +48,7 @@ function GenInverse(varargin)
 %       layers. Specify the layer(s) not trained in ROM model.
 %   ground: the reference/ground electrode
 %   real: are the measurements real (i.e. are the synthetic conds missing)?
+%   simultaneousN: which layers should be simultaneously estimated?
 %
 
     params = [];
@@ -58,7 +59,8 @@ function GenInverse(varargin)
         {'active_layers'},{'sensitivity'},{'use_sinks'},{'new_sinks'}, ...
         {'complim'},{'use_noise'},{'sample_num'},{'noise'},{'tag'},...
         {'debug'},{'ref_sink'},{'weighted'},{'omit_layers'},{'iter'},...
-        {'ground'},{'real'}];
+        {'ground'},{'real'},{'simultaneousN'},{'u'},{'RBModel'},...
+        {'Display'},{'lb'},{'ub'}];
 
     if ~isempty(varargin)
         for i = 1:2:length(varargin) % work for a list of name-value pairs
@@ -118,7 +120,9 @@ function [invROM,invTRAD] = prep(params_S,params,samples)
             
             inv = InverseROMClass(params);
             inv = inv.checkPaths('type','inverse','num',i);
-            inv.savePrep();
+            if isfield(params_S,'Cluster') && params_S.Cluster
+                inv.savePrep();
+            end
             invROM{i} = inv;
         end
         
@@ -128,13 +132,16 @@ function [invROM,invTRAD] = prep(params_S,params,samples)
     
             inv = InverseTradClass(params);
             inv = inv.checkPaths('type','inverse','num',i);
-            inv.savePrep();
+            if isfield(params_S,'Cluster') && params_S.Cluster
+                inv.savePrep();
+            end
             invTRAD{i} = inv;
         end
     end
 end
 
 function [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD)
+
     for i = samples
         setenv("ROMEG_TOP",invROM{i}.top)
         if isfield(params_S,'ROM') && params_S.ROM
@@ -164,10 +171,18 @@ function [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD)
                 end
                 invROM{i}.logger.info('run',['Finished ROM inverse problem for sample ' num2str(i)])
             else
+                if ~isfield(params_S,'RBModel')
+                    load([invROM{i}.top '/Results/ROM/RBModel.mat'],'RBModel')
+                    invROM{i}.RBModel = RBModel;
+                end
+                
                 for ii=1:num_injections
-                    invROM{i}.runInverse(ii);
-                    invROM{i}.saveInv();
-                    invROM{i}.logger.info('run',['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
+                    %invROM{i}.RBModel = RBModel;
+                    invROM{i}.LF = [];
+                    invROM{i} = invROM{i}.runInverse(ii);
+                    %invROM{i}.saveInv();
+                    invROM{i}.estimates(ii,:) = invROM{i}.estimate;
+                    invROM{i}.logger.debug('run',['Finished ROM pattern ' num2str(ii) ' for sample ' num2str(i)])
                 end
             end
             try
@@ -209,7 +224,9 @@ function [invROM,invTRAD] = run(params_S,samples,invROM,invTRAD)
     end
     
     if isfield(params_S,'simultaneous') && params_S.simultaneous
-        OrderedModelClass.wait('INVROM',20);
+        if isfield(params_S,'Cluster')
+            OrderedModelClass.wait('INVROM',20);
+        end
         for s=samples
             invROM{s} = invROM{s}.collect();
         end

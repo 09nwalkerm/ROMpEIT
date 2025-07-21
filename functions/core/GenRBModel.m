@@ -152,10 +152,10 @@ function [FOM,RBModel] = GenRBModel(varargin)
     
     if isfield(paramsROM_S,'Cluster') && paramsROM_S.Cluster
         if isempty(find(strcmp('complim',paramsROM)))
-            !sbatch --array 1-$SE -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/functions/cluster/cluster_job.sh ROM
+            !sbatch --array 1-$SE --cpus-per-task=5 -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/functions/cluster/cluster_job.sh ROM
         else
             setenv("COMPLIM",num2str(FOM.complim))
-            !sbatch --array 1-$SE%$COMPLIM -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/functions/cluster/cluster_job.sh ROM
+            !sbatch --array 1-$SE%$COMPLIM --cpus-per-task=5 -o $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.out -e $ROMEG_TOP/Results/slurm_logs/ROM_%a_%j.err --job-name ROM $ROMEG/functions/cluster/cluster_job.sh ROM
         end
 
         % Wait until the job is done
