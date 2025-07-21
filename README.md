@@ -1,5 +1,5 @@
 [![Documentation Status](https://readthedocs.org/projects/rompeit/badge/?version=latest)](https://rompeit.readthedocs.io/en/latest/?badge=latest)
-[![pipeline status](https://git.cardiff.ac.uk/c1616132/rompeit/badges/main/pipeline.svg)](https://git.cardiff.ac.uk/c1616132/rompeit)
+<!-- [![pipeline status](MY_GITLAB_INSTANCE_ADDRESS/rompeit/badges/main/pipeline.svg)](MY_GITLAB_INSTANCE_ADDRESS/rompeit) -->
 
 # ROMpEIT
 
@@ -16,7 +16,7 @@ the rapid calculation of paramterised boundary value problems. Parametric Electr
 a technique to estimate the conductivites of the tissues in the head, containing within it many boundary value
 problems to solve. This toolbox marries the two techniques for rapid solutions to the pEIT problem.
 
-If using this work in your research please cite as 'Matthew R Walker et al 2025 J. Neural Eng. 22 016018'. The DOI is [10.1088/1741-2552/adab20](doi.org/10.1088/1741-2552/adab20).
+If using this work in your research please cite as 'Matthew R Walker et al 2025 J. Neural Eng. 22 016018'. The DOI is [`10.1088/1741-2552/adab20`](https://doi.org/10.1088/1741-2552/adab20).
 
 ## Installation and Setup
 
