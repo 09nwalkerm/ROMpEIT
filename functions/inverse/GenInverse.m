@@ -1,6 +1,6 @@
 function GenInverse(varargin)
 %
-%   GenInverse(name1,value1,name2,value2...)
+% GenInverse(name1,value1,name2,value2...)
 %
 % Description:
 %   Function to run the inverse problem with either the traditional method

@@ -35,6 +35,4 @@ If you are using this toolbox in your research then please cite it with Matthew 
    Measurement Module <measurement>
    Plotting Module <plotting>
 
-The index for all the documented code can be found here:
-
-* :ref:`genindex`
+*  :ref:`genindex`

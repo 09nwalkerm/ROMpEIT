@@ -1,6 +1,6 @@
 function GenBound(varargin)
 %
-%   GenBound(name1,value1,name2,value2...)
+% GenBound(name1,value1,name2,value2...)
 %
 % Description:
 %   Function to generate the necessary data for the bound plot and save it

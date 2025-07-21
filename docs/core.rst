@@ -6,7 +6,7 @@ This is the core module of the toolbox, containing frequently used classes and f
 Main Function
 -------------
 
-.. automodule:: core.GenRBModel
+.. autofunction:: core.GenRBModel
 
 Classes
 -------

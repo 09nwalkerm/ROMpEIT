@@ -34,7 +34,10 @@ matlab_src_dir = "../functions"
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-
+exclude_patterns = [
+        '_build',
+        '**/site-packages/**',
+]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

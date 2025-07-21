@@ -1,6 +1,6 @@
 .matlab_defaults:
   image:
-    name: <DOCKERHUB_USER>/<IMAGE>:<TAG>  # Replace the value with the name of the MATLAB container image you want to use
+    name: 09nwalkerm/matlab:v2 #<DOCKERHUB_USER>/<IMAGE>:<TAG>  # Replace the value with the name of the MATLAB container image you want to use
     entrypoint: [""]
   variables:
     MLM_LICENSE_FILE: 27000@<MY_LICENSE_SERVER_ADDRESS>

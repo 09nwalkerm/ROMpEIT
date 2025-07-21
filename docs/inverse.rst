@@ -7,7 +7,7 @@ This module contains the classes and functions needed to run the inverse problem
 Main Function
 -------------
 
-.. automodule:: inverse.GenInverse
+.. autofunction:: inverse.GenInverse
 
 Classes
 -------

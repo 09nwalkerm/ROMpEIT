@@ -1,8 +1,8 @@
 function [FOM,RBModel] = GenRBModel(varargin)
 %
-% GenRBModel(name1, value1, name2, value2 ...)
+%GenRBModel(name1, value1, name2, value2 ...)
 %
-% Description:
+%Description:
 %   GenRBModel is the main function in the ROMEG toolbox. It will generate
 %   a FOM.mat object and RBModel.mat object in the Results/ folder. These
 %   are the full order and reduced order head models respectively. Simply
@@ -12,12 +12,13 @@ function [FOM,RBModel] = GenRBModel(varargin)
 %   this function, you are encouraged to run the inverse problem. For
 %   guidance with this type: `help GenInverse`.
 %
-% Requirements:
-%   A small sized cluster (50 cores ~ 1 large cpu node)
-%   MATLAB R2021a or later
-%   Statistics and Machine Learning Toolbox
+%Requirements:
+%   - A small sized cluster (50 cores ~ 1 large cpu node),
+%   - MATLAB R2021a or later,
+%   - Statistics and Machine Learning Toolbox.
 %
-% Arguments:
+%Arguments:
+%
 %   model: path to head model you want to use. Must contain p,t,f.
 %   mu_min: array of minimum conductivities in order of head tissue.
 %   mu_max: array of maximum conductivities in order of head tissue.
@@ -43,7 +44,7 @@ function [FOM,RBModel] = GenRBModel(varargin)
 %   Cluster: is there a compute cluster running SLURM accessible
 %   pre_stiff: are the stiffness matrices already in the model.mat file?
 %
-% Examples:
+%Examples:
 %   
 %   This will create an RBModel with the max and min conductivites
 %   specified, with appropriate stopping conditions. The nuber of beta
@@ -52,7 +53,7 @@ function [FOM,RBModel] = GenRBModel(varargin)
 %   jobs allowed to run in parallel.
 %
 %   GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'tolGREEDY',...
-%       5e-10,'Nmax',200,'use_sinks',true,'nic',100,'complim',60)
+%   5e-10,'Nmax',200,'use_sinks',true,'nic',100,'complim',60)
 %
 %   This will create an RBModel similar to above but where the second layer
 %   is isotropic, meaning parameters 2 and 3 are the tangential and radial
@@ -60,8 +61,8 @@ function [FOM,RBModel] = GenRBModel(varargin)
 %   necessary angle values for the computation.
 %
 %   GenRBModel('model',model,'mu_min',mu_min,'mu_max',mu_max,'tolGREEDY',...
-%       5e-8,'Nmax',100,'use_sinks',true,'nic',80,'anis_tan',3,...
-%       'anis_rad',2,'angles',true,'complim',60)
+%   5e-8,'Nmax',100,'use_sinks',true,'nic',80,'anis_tan',3,...
+%   'anis_rad',2,'angles',true,'complim',60)
 %
 %
 

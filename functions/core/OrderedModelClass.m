@@ -228,12 +228,19 @@ classdef OrderedModelClass
         end
 
         function obj = checkPaths(obj,varargin)
+	%
+	% checkPaths(name1,value1,name2,value2,...)
+	%
+	% Description:
+	%  A function to check that the required directories to save results are present
+	%  and if not then it creates them.
+	%
         % Arguments:
-        %   type        - ROM, measurement, inverse
-        %   num         - sample number (essential if
+        %   type: ROM, measurement, inverse
+        %   num: sample number (essential if
         %               type=measurement,eeg or inverse)
-        %   RB_path     - path to RB model if NOT in $ROMEG_DATA
-        %   num_dipoles - number of dipole folders to set up if using EEG
+        %   RB_path: path to RB model if NOT in $ROMEG_DATA
+        %   num_dipoles: number of dipole folders to set up if using EEG
         %
 
             params = struct();
@@ -348,7 +355,7 @@ classdef OrderedModelClass
         %       for each of the elctrodes listed, resulting in 8 patterns.
         %
         %       OrderedModelClass.patterns('model',model,'num_sinks',10,...
-        %           'electrodes',[1,20,35,56,42,120,13,67])
+        %       'electrodes',[1,20,35,56,42,120,13,67])
         %
 
             obj = OrderedModelClass(varargin);
@@ -552,7 +559,7 @@ classdef OrderedModelClass
 
         function setupFiles(varargin)
         %
-        %   setupFiles(name1,value1,name2,value2...)
+        % setupFiles(name1,value1,name2,value2...)
         %
         % Description:
         %   Sets up folder structure for results from measurements and
@@ -560,8 +567,8 @@ classdef OrderedModelClass
         %   between the ROM folders.
         %
         % Arguments:
-        %   ROM      - (boolean) will this folder contain the RBModel?
-        %   RB_path     - path to RBModel for sym link if NOT in $ROMEG_DATA
+        %   ROM: (boolean) will this folder contain the RBModel?
+        %   RB_path: path to RBModel for sym link if NOT in $ROMEG_DATA
         %
         %
 
@@ -616,15 +623,15 @@ classdef OrderedModelClass
         
         function sensitivityFiles(varargin)
         %
-        %   OrderedModelClass.sensitivityFiles(name1,value1,name2,value2,...)
+        % OrderedModelClass.sensitivityFiles(name1,value1,name2,value2,...)
         %
         % Arguments:
-        %   num_layers  - total number of active layers
-        %   recursion   - number of layers to use
-        %   sample_num  - sample number
-        %   layers      - array of active layers where each row is new
+        %   num_layers: total number of active layers
+        %   recursion: number of layers to use
+        %   sample_num: sample number
+        %   layers: array of active layers where each row is new
         %                 active layer set
-        %   order       - ROM or TRAD?
+        %   order: ROM or TRAD?
         %
         %
             
@@ -657,11 +664,11 @@ classdef OrderedModelClass
         
         function EEGFiles(varargin)
         %
-        %   OrderedModelClass.EEGFiles(name1,value1,name2,value2,...)
+        % EEGFiles(name1,value1,name2,value2,...)
         %
         % Arguments:
-        %   sample_num  - sample number
-        %   num_dipoles - number of dipoles being used
+        %   sample_num: sample number
+        %   num_dipoles: number of dipoles being used
         %
             
             params = struct();
@@ -694,57 +701,6 @@ classdef OrderedModelClass
         
     end
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

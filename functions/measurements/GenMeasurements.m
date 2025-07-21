@@ -1,6 +1,6 @@
 function GenMeasurements(varargin)
 %
-%   GenMeasurements(name1,value1,name2,value2...)
+% GenMeasurements(name1,value1,name2,value2...)
 %
 % Description:
 %   Function to generate synthetic measurements from a head model and some

@@ -6,7 +6,7 @@ The purpose for this module is to generate synthetic measurements for a given EI
 Main Function
 -------------
 
-.. automodule:: measurements.GenMeasurements
+.. autofunction:: measurements.GenMeasurements
 
 Classes
 -------

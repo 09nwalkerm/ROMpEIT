@@ -32,7 +32,7 @@ classdef PlottingClass < OrderedModelClass
 
         function obj = plotHeadModel(obj,varargin)
         % 
-        %   plotHeadModel(name1,value1,name2,value2...)
+        % plotHeadModel(name1,value1,name2,value2...)
         %
         % Arguments:
         %   model: path to model
@@ -63,13 +63,13 @@ classdef PlottingClass < OrderedModelClass
         %   elec_centers: centre point in metres of the electrodes
         %   
         %   
-        %   Examples:
+        % Examples:
         %       
-        %       plotting.plotHeadModel('model',model,'electrodes',true,...
-        %           'sample_num',4,'folder','inverse_12345','elec_err',3)
+        %  plotting.plotHeadModel('model',model,'electrodes',true,...
+        %  'sample_num',4,'folder','inverse_12345','elec_err',3)
         %
-        %       plotting.plotHeadModel('model',model,'cond_map',true,...
-        %           'sample_num',4,)
+        %  plotting.plotHeadModel('model',model,'cond_map',true,...
+        %  'sample_num',4,)
         %
 
             obj = obj.processArgs(varargin);

@@ -6,7 +6,7 @@ The plotting module is for the collection and plotting of the data created by th
 Main Function
 -------------
 
-.. automodule:: plotting.GenPlot
+.. autofunction:: plotting.GenPlot
 
 Classes
 -------
