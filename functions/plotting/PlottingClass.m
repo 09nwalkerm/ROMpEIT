@@ -26,48 +26,50 @@ classdef PlottingClass < OrderedModelClass
         estimates
         sources
         tag
+        elec_centers
     end
     methods
 
         function obj = plotHeadModel(obj,varargin)
         % 
-        %   plotHeadModel(name1,value1,name2,value2...)
+        % plotHeadModel(name1,value1,name2,value2...)
         %
         % Arguments:
-        %   model       - path to model
-        %   axis        - axis to cut along if desired e.g. 'x' or 'y'
-        %   cut         - how far along would you like to cut
-        %   fill        - how would you like to colour in the tetrahedrons
-        %   solution    - solution to the FEM equations.
-        %   electrodes  - (boolean) would you like the electrodes plotted 
+        %   model: path to model
+        %   axis: axis to cut along if desired e.g. 'x' or 'y'
+        %   cut: how far along would you like to cut
+        %   fill: how would you like to colour in the tetrahedrons
+        %   solution: solution to the FEM equations.
+        %   electrodes: (boolean) would you like the electrodes plotted 
         %                 on the scalp?
-        %   cond_map    - (boolean) for mapping the anisotropy in the
+        %   cond_map: (boolean) for mapping the anisotropy in the
         %                 skull which should be the second layer
-        %   sources     - is the cond_map made with sources
-        %   sample_num  - sample number to load estimates for.
-        %   folder      - (character vector) name of inverse sub-folder, leave
+        %   sources: is the cond_map made with sources
+        %   sample_num: sample number to load estimates for.
+        %   folder: (character vector) name of inverse sub-folder, leave
         %                 out to indicate main folder
-        %   elec_err    - plot the error of estimation on each electrode,
+        %   elec_err: plot the error of estimation on each electrode,
         %                 give layer number.
-        %   tag         - tag for estimates file
-        %   tissue      - which tissue to display (a number)
-        %   map_tissue  - tissue to interpolate onto skull
-        %   amp_dense   - plot the current density - must come with fill
+        %   tag: tag for estimates file
+        %   tissue: which tissue to display (a number)
+        %   map_tissue: tissue to interpolate onto skull
+        %   amp_dense: plot the current density - must come with fill
         %                 argument and conds argument
-        %   conds       - conductivity of head model for current density
-        %   LIC         - plot vector field
-        %   thickness   - boolean dispay thickness of skull as colour
-        %   cmap        - matlab colormap option
-        %   estimates   - the estimates on the electrodes to plot
+        %   conds: conductivity of head model for current density
+        %   LIC: plot vector field
+        %   thickness: boolean dispay thickness of skull as colour
+        %   cmap: matlab colormap option
+        %   estimates: the estimates on the electrodes to plot
+        %   elec_centers: centre point in metres of the electrodes
         %   
         %   
-        %   Examples:
+        % Examples:
         %       
-        %       plotting.plotHeadModel('model',model,'electrodes',true,...
-        %           'sample_num',4,'folder','inverse_12345','elec_err',3)
+        %  plotting.plotHeadModel('model',model,'electrodes',true,...
+        %  'sample_num',4,'folder','inverse_12345','elec_err',3)
         %
-        %       plotting.plotHeadModel('model',model,'cond_map',true,...
-        %           'sample_num',4,)
+        %  plotting.plotHeadModel('model',model,'cond_map',true,...
+        %  'sample_num',4,)
         %
 
             obj = obj.processArgs(varargin);
@@ -168,7 +170,7 @@ classdef PlottingClass < OrderedModelClass
                 t = obj.t;
             end
             
-            if ~isempty(obj.tissue)
+            if ~isempty(obj.tissue) && isempty(obj.cond_map)
                 t = obj.t(obj.t(:,5)==obj.tissue,1:4);
             end
             
@@ -189,16 +191,41 @@ classdef PlottingClass < OrderedModelClass
             else
                 tri2=tri1;
             end
-                
+
             if size(d,1)==size(p,1)
                 s.FaceVertexCData=d(:);s.Faces=tri1;
+                %s.FaceVertexCData=[0.98 0.86 0.20].*ones(size(d,1),3);s.Faces=tri1;
+                %s.FaceVertexCData=[0 0 1].*ones(size(d,1),3);s.Faces=tri1;
             elseif size(d,1)==size(t,1)
 %                 ty=tsearchn(p,double(tor),(p(tri2(:,1),:)+p(tri2(:,2),:)+p(tri2(:,3),:))/3);
 %                 s.FaceVertexCData=d(~isnan(ty));
 %                 s.Faces=tri2;
 %                 ty(~isnan(ty)==1)=ty(1);
 %                 s.FaceVertexCData=d(~isnan(ty));
-                s.CData = d(:);
+                %s.CData = d(:);
+                
+                %tetramesh(t,p,d)
+                s.Faces=tri1;
+                %t = sort(t,2);
+                %tri1 = sort(tri1,2);
+                
+                %parpool(2)
+                tic
+                parfor i=1:size(tri1,1)
+                    triangle = tri1(i,:);
+                    %disp(triangle)
+                    ts = ismember(t,triangle);
+                    [r,c,v] = find(ts);
+                    iloc = mode(r);
+                    FV(i) = d(iloc,1);
+                    if i == 1000
+                        disp('i=1000')
+                        toc
+                    end
+                    %s.FaceVertexCData(i)=d(iloc,1);
+                    %disp(iloc)
+                end
+                s.FaceVertexCData=FV;
             else
                 warning('Error');return;
             end
@@ -291,44 +318,97 @@ classdef PlottingClass < OrderedModelClass
             OrderedModelClass.changePath(['Result' num2str(obj.sample_num)]); obj.top = getenv("ROMEG_TOP");
             
             %load sinks
-            obj = obj.loadSinks();
+            %obj = obj.loadSinks();
             electrodes = obj.sinks(:,1);
             
             %load estimates
             
-            if isempty(obj.sources) || obj.sources == false
-                if isempty(obj.estimates)
-                    if isempty(obj.folder)
-                        for ii=1:length(electrodes)
-                            load([obj.top '/Results/inverse/ROM/inv_' num2str(ii) '.mat'],'inv')
-                            estimates = [estimates; inv.estimate];
-                        end
-                        obj.estimates = estimates(:,obj.map_tissue);
-                    else
-                        load([obj.top '/Results/inverse/ROM/' obj.folder '/estimates.mat'],'estimates')
-                        obj.estimates = estimates(:,obj.map_tissue);
-                    end
-                end
+%             if isempty(obj.sources) || obj.sources == false
+%                 if isempty(obj.estimates)
+%                     if isempty(obj.folder)
+%                         for ii=1:length(electrodes)
+%                             load([obj.top '/Results/inverse/ROM/inv_' num2str(ii) '.mat'],'inv')
+%                             estimates = [estimates; inv.estimate];
+%                         end
+%                         obj.estimates = estimates(:,obj.map_tissue);
+%                     else
+%                         load([obj.top '/Results/inverse/ROM/' obj.folder '/estimates.mat'],'estimates')
+%                         obj.estimates = estimates(:,obj.map_tissue);
+%                     end
+%                 end
+% 
+%                 t2 = obj.t(obj.t(:,5)==obj.map_tissue,1:4);
+% 
+%                 if isempty(obj.elec_centers)
+%                     obj.elec_centers = zeros(size(obj.estimates,1),3);
+%                     for ii = 1:length(electrodes)
+%                         nodes = obj.f(obj.f(:,4)==electrodes(ii),1:3);
+%                         nodes = unique(nodes);
+%                         obj.elec_centers(ii,:) = [mean(obj.p(nodes,1)) mean(obj.p(nodes,2)) mean(obj.p(nodes,3))];
+%                     end
+%                 end
+%             else
+%                 %tbd
+%             end
 
-                t2 = obj.t(obj.t(:,5)==obj.map_tissue,1:4);
+%             indx = unique(t2(:,1:4));
+%             pp = obj.p(indx,:);
+%             PQ = dsearchn(pp,obj.elec_centers);
+%             F = scatteredInterpolant(pp(PQ,:),obj.estimates);
+%             obj.VQ = F(obj.p);
+%             obj.d = obj.VQ;
+%             obj.t=t2;
+            
+            
+            t1 = obj.t(obj.t(:,5)==obj.tissue,1:4);
+            t2 = obj.t(obj.t(:,5)==obj.tissue+1,1:4);
+            %t8 = t(t(:,5)==8,1:4);
 
-                elec_centers = zeros(size(obj.estimates,1),3);
-                for ii = 1:length(electrodes)
-                    nodes = obj.f(obj.f(:,4)==electrodes(ii),1:3);
-                    nodes = unique(nodes);
-                    elec_centers(ii,:) = [mean(obj.p(nodes,1)) mean(obj.p(nodes,2)) mean(obj.p(nodes,3))];
-                end
-            else
-                %tbd
+            obj.logger.info('makeCondMatrix','Creating centroids...')
+            %centroids8 = meshcentroid(p,t8);
+            centroids2 = meshcentroid(obj.p,t1);
+            centroids3 = meshcentroid(obj.p,t2);
+            obj.logger.info('makeCondMatrix','Centroids made... finding electrode centres')
+
+            elec_centers = obj.elec_centers;%obj.p(obj.elec_centers(:,1),:);
+
+            skull1 = zeros(size(obj.estimates,1),3);
+            csf1 = zeros(size(obj.estimates,1),3);
+            skull2 = zeros(size(obj.estimates,1),3);
+            obj.logger.info('makeCondMatrix','Starting loops...')
+
+            for i = 1:size(obj.estimates,1)
+                % closest skull centroid to electrode
+                %indx = unique(t2(:,1:4));
+                %pp = p(indx,:);
+
+                PQ = dsearchn(centroids2,elec_centers(electrodes(i,1),:));
+                skull1(i,1:3) = centroids2(PQ,1:3);
+                %skull1(i,1:3) = elec_centers(patterns(i,1),:);%centroids2(PQ,1:3);
+
+
+                % closest csf centroids3 to skull centroid
+                PQ = dsearchn(centroids3,skull1(i,:));
+                csf1(i,1:3) = centroids3(PQ,1:3);
+
+                % closest skull to csf
+                PQ = dsearchn(centroids2,csf1(i,:));
+                skull2(i,1:3) = centroids2(PQ,1:3);
+                %disp(['Finished electrode ' num2str(i)])
             end
-
-            indx = unique(t2(:,1:4));
-            pp = obj.p(indx,:);
-            PQ = dsearchn(pp,elec_centers);
-            F = scatteredInterpolant(pp(PQ,:),obj.estimates);
-            obj.VQ = F(obj.p);
-            obj.d = obj.VQ;
-            obj.t=t2;
+            
+            %obj.estimates=obj.estimates(:,1)/mean(obj.estimates(:,1));
+            %disp(obj.estimates)
+            %F1 = scatteredInterpolant([skull1; skull2],[obj.estimates; obj.estimates],'natural','linear');
+            %F1 = scatteredInterpolant(elec_centers(electrodes,:),obj.estimates,'natural','linear');
+            F1 = scatteredInterpolant(skull1,obj.estimates,'natural','linear');
+            obj.d = zeros(size(obj.p,1),1);
+            t_p = unique(obj.t(obj.t(:,5)==obj.tissue,1:4));
+            VQ2 = F1(obj.p(t_p,1:3));
+            obj.d(t_p) = VQ2;
+            obj.t=t1;
+            %obj.d(obj.d<0.05)= 0.0001;
+            %obj.d(obj.d>1.9)=0.0001;
         end
     end
 end

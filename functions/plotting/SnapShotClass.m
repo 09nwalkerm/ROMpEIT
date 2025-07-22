@@ -36,21 +36,21 @@ classdef SnapShotClass < PlottingClass
         
         function obj = SnapShotClass(varargin)
         %
-        %   SnapShotClass(name1,value1,name2,value2,...)
+        % SnapShotClass(name1,value1,name2,value2,...)
         %
         % Arguments:
-        %   range           - (int) visualize how many snapshots
-        %   num_samples     - array of sample numbers to read from
-        %   sample_num      - sample or samples to visualize
-        %   split_conds     - don't average across all samples
-        %   split_layers    - split the layers being displayed
-        %   omit            - array for each sample, omit convergences that
-        %                     take longer than this
-        %   split_elec      - don't average across electrodes
-        %   tissue          - which tissue to plot
-        %   layer_names     - names of tissue layers in cell array
-        %   ROM             - Only load ROM values
-        %   COV             - plot the coefficient of variation for ROM
+        %   range: (int) visualize how many snapshots
+        %   num_samples: array of sample numbers to read from
+        %   sample_num: sample or samples to visualize
+        %   split_conds: don't average across all samples
+        %   split_layers: split the layers being displayed
+        %   omit: array for each sample, omit convergences that
+        %                take longer than this
+        %   split_elec: don't average across electrodes
+        %   tissue: which tissue to plot
+        %   layer_names: names of tissue layers in cell array
+        %   ROM: Only load ROM values
+        %   COV: plot the coefficient of variation for ROM
         %
         %
             obj = obj.processArgs(varargin);

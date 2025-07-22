@@ -34,6 +34,7 @@ classdef OrderedModelClass
         pre_stiff      % are the stiff mats already in head_model file?
         L
         Aq
+        no_repeats
     end
     
     %properties (Access = protected)
@@ -227,12 +228,19 @@ classdef OrderedModelClass
         end
 
         function obj = checkPaths(obj,varargin)
+	%
+	% checkPaths(name1,value1,name2,value2,...)
+	%
+	% Description:
+	%  A function to check that the required directories to save results are present
+	%  and if not then it creates them.
+	%
         % Arguments:
-        %   type        - ROM, measurement, inverse
-        %   num         - sample number (essential if
+        %   type: ROM, measurement, inverse
+        %   num: sample number (essential if
         %               type=measurement,eeg or inverse)
-        %   RB_path     - path to RB model if NOT in $ROMEG_DATA
-        %   num_dipoles - number of dipole folders to set up if using EEG
+        %   RB_path: path to RB model if NOT in $ROMEG_DATA
+        %   num_dipoles: number of dipole folders to set up if using EEG
         %
 
             params = struct();
@@ -283,16 +291,18 @@ classdef OrderedModelClass
                         %obj.top = [data '/Result' num2str(params.num)];
 
                     end
-                elseif strcmp(params.type,'eeg')
+                elseif strcmp(params.type,'eeg') || strcmp(params.type,'LF')
                     if ~isfolder([data '/Result' num2str(params.num)])
                         disp(['Making Result' num2str(params.num) ' folder.'])
                         mkdir([data '/Result' num2str(params.num)])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
-                        %obj.top = [data '/Result' num2str(params.num)];
+                        if strcmp(params.type,'LF'); params.num_dipoles=0; end
                         OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                     else
                         obj.logger.warn('checkPaths',['Result' num2str(params.num) ' folder in data path already exists, overwriting.'])
                         OrderedModelClass.changePath(['Result' num2str(params.num)])
+                        if strcmp(params.type,'LF'); params.num_dipoles=0; end
+                        OrderedModelClass.EEGFiles('sample_num',params.num,'num_dipoles',params.num_dipoles);
                         %obj.top = [data '/Result' num2str(params.num)];
                     end
                 else
@@ -335,6 +345,8 @@ classdef OrderedModelClass
         %       new_sinks: are these new sinks being made for inverse
         %       close: select the closest electrodes. Default is furthest
         %                     away
+        %       no_repeats: do not use the same electrodes in opposite
+        %                   patterns
         %
         %   Examples:
         %       
@@ -343,7 +355,7 @@ classdef OrderedModelClass
         %       for each of the elctrodes listed, resulting in 8 patterns.
         %
         %       OrderedModelClass.patterns('model',model,'num_sinks',10,...
-        %           'electrodes',[1,20,35,56,42,120,13,67])
+        %       'electrodes',[1,20,35,56,42,120,13,67])
         %
 
             obj = OrderedModelClass(varargin);
@@ -380,7 +392,7 @@ classdef OrderedModelClass
                     for jj = 1:size(elec_sinks,1)
                         lengths(jj,:) = elec_sinks(jj,:) - pos(:,:);
                         if ~isempty(obj.elec_height)
-                            if (elec_sinks(jj,3) < obj.elec_height), lengths(jj,:) = []; end
+                            if (elec_sinks(jj,3) < obj.elec_height), lengths(jj,:) = NaN; end
                         end
                     end
 
@@ -390,7 +402,19 @@ classdef OrderedModelClass
                         [~,ind] = mink(norms,obj.num_sinks+1);
                         ind = ind(2:end);
                     else
-                        [~,ind] = maxk(norms,obj.num_sinks);
+                        if isempty(obj.no_repeats)
+                            [~,ind] = maxk(norms,obj.num_sinks);
+                        else
+                            [~,ind] = maxk(norms,obj.num_sinks);
+                            taken = unique(sinks(:,2:obj.num_sinks+1));
+                            %disp(taken)
+                            while ~isempty(find(ismember(taken,ind)))
+                                lengths(ind,:) = NaN;
+                                norms = vecnorm(lengths');
+                                [~,ind] = maxk(norms,obj.num_sinks);
+                                %disp(ind)
+                            end
+                        end
                     end
 
                     sinks(ii,2:obj.num_sinks+1) = ind;
@@ -535,7 +559,7 @@ classdef OrderedModelClass
 
         function setupFiles(varargin)
         %
-        %   setupFiles(name1,value1,name2,value2...)
+        % setupFiles(name1,value1,name2,value2...)
         %
         % Description:
         %   Sets up folder structure for results from measurements and
@@ -543,8 +567,8 @@ classdef OrderedModelClass
         %   between the ROM folders.
         %
         % Arguments:
-        %   ROM      - (boolean) will this folder contain the RBModel?
-        %   RB_path     - path to RBModel for sym link if NOT in $ROMEG_DATA
+        %   ROM: (boolean) will this folder contain the RBModel?
+        %   RB_path: path to RBModel for sym link if NOT in $ROMEG_DATA
         %
         %
 
@@ -599,15 +623,15 @@ classdef OrderedModelClass
         
         function sensitivityFiles(varargin)
         %
-        %   OrderedModelClass.sensitivityFiles(name1,value1,name2,value2,...)
+        % OrderedModelClass.sensitivityFiles(name1,value1,name2,value2,...)
         %
         % Arguments:
-        %   num_layers  - total number of active layers
-        %   recursion   - number of layers to use
-        %   sample_num  - sample number
-        %   layers      - array of active layers where each row is new
+        %   num_layers: total number of active layers
+        %   recursion: number of layers to use
+        %   sample_num: sample number
+        %   layers: array of active layers where each row is new
         %                 active layer set
-        %   order       - ROM or TRAD?
+        %   order: ROM or TRAD?
         %
         %
             
@@ -640,11 +664,11 @@ classdef OrderedModelClass
         
         function EEGFiles(varargin)
         %
-        %   OrderedModelClass.EEGFiles(name1,value1,name2,value2,...)
+        % EEGFiles(name1,value1,name2,value2,...)
         %
         % Arguments:
-        %   sample_num  - sample number
-        %   num_dipoles - number of dipoles being used
+        %   sample_num: sample number
+        %   num_dipoles: number of dipoles being used
         %
             
             params = struct();
@@ -658,8 +682,10 @@ classdef OrderedModelClass
             top = getenv("ROMEG_TOP");
             if ~isfolder([top '/Results/EEG_FP'])
                 mkdir([top '/Results/EEG_FP'])
+                mkdir([top '/Results/measurements'])
                 mkdir([top '/Results/slurm_logs'])
                 mkdir([top '/Results/logs'])
+                !ln -s $ROMEG_DATA/ROM/Results/ROM $ROMEG_TOP/Results/ROM
             else
                 warning('EEG_FP folder already exists, will be overwritten')
             end
@@ -675,57 +701,6 @@ classdef OrderedModelClass
         
     end
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

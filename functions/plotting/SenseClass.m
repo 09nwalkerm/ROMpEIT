@@ -16,18 +16,18 @@ classdef SenseClass < PlottingClass
         
         function obj = SenseClass(varargin)
         %
-        %   SenseClass(name1,value1,name2,value2,...)
+        % SenseClass(name1,value1,name2,value2,...)
         %
         % Arguments:
-        %   layer_names     - list of names in a cell
-        %   layers          - layers to be estimated
-        %   plot            - type of plot, "Bar", "Box"
-        %   num_samples     - array of sample numbers to read from
-        %   anis            - isotropic layer to be compared to
-        %                     anisotropic counter parts
-        %   split_elec      - split RE into individual electrodes
-        %   c               - used to make folder string, layers estimated
-        %   tag             - tag used to save estimates
+        %   layer_names: list of names in a cell
+        %   layers: layers to be estimated
+        %   plot: type of plot, "Bar", "Box"
+        %   num_samples: array of sample numbers to read from
+        %   anis: isotropic layer to be compared to
+        %               anisotropic counter parts
+        %   split_elec: split RE into individual electrodes
+        %   c: used to make folder string, layers estimated
+        %   tag: tag used to save estimates
         %
             
             obj = obj.processArgs(varargin);
@@ -113,15 +113,15 @@ classdef SenseClass < PlottingClass
         
         function plotSensitivity(obj,varargin)
         %
-        %   plotSensitivity(name1,value1,name2,value2,...)
+        % plotSensitivity(name1,value1,name2,value2,...)
         %
         % Arguments:
-        %   layer_names     - list of names in a cell
-        %   plot            - type of plot, "Bar", "Box"
-        %   num_samples     - number of samples to read from
-        %   anis            - isotropic layer to be compared to
-        %                     anisotropic counter parts
-        %   elec            - electrode to view sensitivity
+        %   layer_names: list of names in a cell
+        %   plot: type of plot, "Bar", "Box"
+        %   num_samples: number of samples to read from
+        %   anis: isotropic layer to be compared to
+        %        anisotropic counter parts
+        %   elec: electrode to view sensitivity
         %
             obj = obj.processArgs(varargin);
             

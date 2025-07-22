@@ -308,7 +308,7 @@ classdef FOMClass < OrderedModelClass
         %   Results/ folder.
         %
         % Arguments:
-        %   - top - path to top of ROMEG tree
+        %   top: path to top of ROMEG tree
 
 
             load([top '/Results/ROM/FOM.mat'],'FOM')

@@ -1,20 +1,20 @@
 function GenPlot(varargin)
 %
-%   GenPlot(name1,value1,name2,value2,...)
+% GenPlot(name1,value1,name2,value2,...)
 %
 % Description:
 %   A function to load and plot the processed data from the specified
 %   ROMEG_DATA repository of data.
 %
 % Arguments:
-%   sense           - plot the sensitivity analysis
-%   layer_names     - list of names in a cell
-%   plot            - type of plot, "Bar", "Box"
-%   num_samples     - number of samples to read from
-%   anis            - isotropic layer to be compared to
+%   sense: plot the sensitivity analysis
+%   layer_names: list of names in a cell
+%   plot: type of plot, "Bar", "Box"
+%   num_samples: number of samples to read from
+%   anis: isotropic layer to be compared to
 %                     anisotropic counter parts
-%   snap            - plot the snap shot comparison data
-%   bound           - plot the bound data
+%   snap: plot the snap shot comparison data
+%   bound: plot the bound data
 %
 % Example:
 %   After running AllPlot.m script you may wish to make all the plots like

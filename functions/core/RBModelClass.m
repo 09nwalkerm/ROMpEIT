@@ -38,7 +38,7 @@ classdef RBModelClass < OrderedModelClass
         %   Results/ folder.
         %
         % Arguments:
-        %   - top - Path to the top of the ROMEG tree
+        %   top: Path to the top of the ROMEG tree
         %
 
             RBModel = obj;

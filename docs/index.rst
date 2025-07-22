@@ -6,20 +6,33 @@
 Welcome to ROMpEIT's documentation!
 ===================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+Reduced Order Modelling for parametric Electrical Impedance Tomography (ROMpEIT) is a method to significantly reduce the computational load of EIT, and unlock new capabilities.
+This MATLAB toolbox has been developed to demonstrate this new technique and unlock the full potential of EIT.
+In this documentation there is a brief introduction to the method and a breakdown of many of the functions and classes in the toolbox.
+Some examples are also presented so that the user can get to grips with some of the features.
+To learn more about the method the reader is directed to the associated `publication <https://doi.org/10.1088/1741-2552/adab20>`_ and the `PhD thesis of Matthew R Walker <https://orca.cardiff.ac.uk/id/eprint/175201/>`_.
+
+I hope you find this software useful for your work. 
+If you are using this toolbox in your research then please cite it with Matthew R Walker et al 2025 J. Neural Eng. 22 016018. The DOI is `10.1088/1741-2552/adab20`_. 
+
+.. _10.1088/1741-2552/adab20: https://doi.org/10.1088/1741-2552/adab20
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 1
+   :caption: Basics:
+
+   Installation Guide <install>
+   Getting Started <examples>
+   CI/CD Pipelines <cont_int>
+
+.. toctree::
+   :maxdepth: 1
    :caption: Manual:
 
-   Functions <ROMpEIT>
+   Core Module <core>
+   Inverse Module <inverse>
+   Bound Module <bound>
+   Measurement Module <measurement>
+   Plotting Module <plotting>
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+*  :ref:`genindex`

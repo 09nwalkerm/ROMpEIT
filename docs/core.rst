@@ -3,20 +3,26 @@ Core Module
 
 This is the core module of the toolbox, containing frequently used classes and functions.
 
-.. automodule:: core
+Main Function
+-------------
 
-.. autoclass:: ROMClass
+.. autofunction:: core.GenRBModel
+
+Classes
+-------
+
+.. autoclass:: core.ROMClass
     :show-inheritance:
     :members:
 
-.. autoclass:: FOMClass
+.. autoclass:: core.FOMClass
     :members:
     :show-inheritance:
 
-.. autoclass:: RBModelClass
+.. autoclass:: core.RBModelClass
    :members:
    :show-inheritance:
 
-.. autoclass:: OrderedModelClass
+.. autoclass:: core.OrderedModelClass
    :members:
    :show-inheritance:
