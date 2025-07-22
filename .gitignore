@@ -36,3 +36,6 @@ external/bleigifp
 # python env for docs
 docs/sph_env
 sph_env
+
+# gitlab ci 
+.gitlab-ci.yml
