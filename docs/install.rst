@@ -1,8 +1,8 @@
 Installation Guide
 ==================
 
-Installing on a linux system
-----------------------------
+Installing on Linux
+-------------------
 
 Firstly, download this git repository:
 
